@@ -18,7 +18,13 @@ public class EventService {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public EventService() {
-        startPeriodicEvents();
+        this(true);
+    }
+    
+    public EventService(boolean enablePeriodicEvents) {
+        if (enablePeriodicEvents) {
+            startPeriodicEvents();
+        }
     }
 
     public SseEmitter createEventStream() {
