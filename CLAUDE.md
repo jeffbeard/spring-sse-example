@@ -50,6 +50,39 @@ open http://localhost:8080/test.html
 - Static HTML test client available at `/test.html`
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
 
+## Branch and Commit Conventions
+
+**IMPORTANT**: Always follow these conventions when creating branches and commits.
+
+**Branch Naming:**
+- `feature/<short-name>` - New features or enhancements
+- `bugfix/<short-name>` - Bug fixes
+
+**Commit Message Format:**
+```
+<type>: <description>
+
+[optional body]
+```
+
+**Allowed Commit Types (use exactly these prefixes):**
+- `feature:` - New functionality or enhancements
+- `bugfix:` - Bug fixes
+- `chore:` - Maintenance tasks, dependency updates
+- `docs:` - Documentation changes
+- `refactor:` - Code improvements without changing functionality
+- `test:` - Adding or updating tests
+- `perf:` - Performance improvements
+- `ci:` - CI/CD pipeline changes
+
+**Examples:**
+```
+feature: add SSE authentication middleware
+bugfix: fix memory leak in connection cleanup
+chore: update Spring Boot to 3.3.6
+docs: update API documentation
+```
+
 ## Key Implementation Details
 
 - Uses `@CrossOrigin(origins = "*")` for development - restrict in production
