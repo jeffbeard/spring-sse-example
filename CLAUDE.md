@@ -83,6 +83,44 @@ chore: update Spring Boot to 3.3.6
 docs: update API documentation
 ```
 
+## Testing Strategy
+
+**Current Test Suite (100% passing):**
+- `SimpleTest`: Basic functionality smoke tests
+- `EventControllerSimpleTest`: Direct controller testing without mocking
+- `EventServiceTest`: SSE connection management with disabled periodic events
+
+**Test Coverage:** JaCoCo reports generated with 50% minimum threshold.
+
+## Future Test Improvements (TODO)
+
+**When Mockito/Spring compatibility improves, consider adding:**
+
+1. **Enhanced Integration Tests:**
+   ```java
+   @SpringBootTest(webEnvironment = RANDOM_PORT)
+   @TestPropertySource(properties = "spring.profiles.active=test")
+   // Full application context tests with TestRestTemplate
+   ```
+
+2. **MockMvc API Tests:**
+   ```java
+   @WebMvcTest(EventController.class)
+   // Focused controller layer testing with MockMvc
+   ```
+
+3. **SSE Streaming Tests:**
+   ```java
+   // Real HTTP client tests for SSE endpoint streaming
+   // Test connection lifecycle, event parsing, reconnection
+   ```
+
+4. **Concurrent Connection Tests:**
+   ```java
+   // Test multiple simultaneous SSE connections
+   // Verify thread-safety under load
+   ```
+
 ## Key Implementation Details
 
 - Uses `@CrossOrigin(origins = "*")` for development - restrict in production
