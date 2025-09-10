@@ -28,6 +28,21 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 ./gradlew test           # Run tests
 ```
 
+**Docker and Container Commands:**
+```bash
+# Build Docker image with Jib
+./gradlew jib            # Build and push to registry (requires DOCKER_USERNAME/DOCKER_PASSWORD)
+
+# Build image locally
+./gradlew jibDockerBuild # Build local Docker image
+
+# Run with Docker (local build)
+docker run -p 8080:8080 spring-sse-example:0.0.1-SNAPSHOT
+
+# Build and push using script
+./scripts/build-and-push.sh
+```
+
 **Testing SSE Endpoints:**
 ```bash
 # Test SSE stream (will show real-time events)
@@ -49,6 +64,15 @@ open http://localhost:8080/test.html
 - CORS configured for all origins (development only)
 - Static HTML test client available at `/test.html`
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
+
+## Versioning and Release Conventions
+
+**Semantic Versioning (SemVer):**
+- Follow semantic versioning format: `MAJOR.MINOR.PATCH`
+- **MAJOR**: Breaking changes that are not backward compatible
+- **MINOR**: New features that are backward compatible
+- **PATCH**: Bug fixes that are backward compatible
+- Examples: `1.0.0`, `1.2.3`, `2.0.0-beta.1`
 
 ## Branch and Commit Conventions
 
@@ -127,3 +151,69 @@ docs: update API documentation
 - SSE connection lifecycle managed with completion/timeout/error callbacks  
 - Background `ScheduledExecutorService` generates periodic events
 - Event data formatted as JSON with message and timestamp fields
+
+## Container and Kubernetes Deployment
+
+**Environment Variables for Docker/Kubernetes:**
+```bash
+DOCKER_REGISTRY=docker.io           # Docker registry (default: docker.io)
+DOCKER_USERNAME=<your-username>     # Docker Hub username
+DOCKER_TOKEN=<your-access-token>    # Docker Hub Personal Access Token
+SPRING_PROFILES_ACTIVE=production   # Spring profile (minikube/production)
+```
+
+**Minikube Deployment:**
+```bash
+# Start minikube
+minikube start
+
+# Build and push image
+export DOCKER_USERNAME=<your-username>
+export DOCKER_TOKEN=<your-personal-access-token>
+./scripts/build-and-push.sh
+
+# Deploy to minikube
+./scripts/deploy-minikube.sh
+
+# Access the service
+minikube service spring-sse-service -n spring-sse-example
+```
+
+**EKS Deployment:**
+```bash
+# Configure AWS CLI and create EKS cluster
+aws eks create-cluster --name my-cluster --version 1.28 --role-arn <cluster-role-arn>
+
+# Build and push image
+export DOCKER_USERNAME=<your-username>
+export DOCKER_TOKEN=<your-personal-access-token>
+./scripts/build-and-push.sh
+
+# Deploy to EKS
+export EKS_CLUSTER_NAME=my-cluster
+./scripts/deploy-eks.sh
+```
+
+**Kubernetes Resources:**
+- **Namespace**: `spring-sse-example`
+- **Deployment**: 2 replicas (1 for Minikube), rolling updates
+- **Service**: LoadBalancer type for external access
+- **ConfigMap**: Application configuration
+- **Resource Limits**: 512Mi memory, 500m CPU (256Mi/250m for Minikube)
+- **Health Checks**: Liveness and readiness probes on `/actuator/health`
+- **Security**: Non-root user (1001), read-only filesystem, dropped capabilities
+
+**Monitoring and Troubleshooting:**
+```bash
+# Check pod status
+kubectl get pods -n spring-sse-example
+
+# View logs
+kubectl logs -f deployment/spring-sse-app -n spring-sse-example
+
+# Port forward for local access
+kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-example
+
+# Check health endpoint
+curl http://localhost:8081/actuator/health
+```
