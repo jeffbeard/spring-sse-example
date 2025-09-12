@@ -152,6 +152,52 @@ docs: update API documentation
 - Background `ScheduledExecutorService` generates periodic events
 - Event data formatted as JSON with message and timestamp fields
 
+## Complete Build Pipeline
+
+### Pipeline Overview
+The build pipeline provides complete automation from code to deployment:
+
+1. **CI/CD Pipeline** (`.github/workflows/ci.yml`):
+   - **Test Job**: Runs tests, generates coverage reports
+   - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on main and feature branches)
+   
+2. **Local Scripts**:
+   - `scripts/build-and-push.sh`: Build and push Docker images locally
+   - `scripts/deploy-minikube.sh`: Deploy to local Minikube cluster
+
+3. **Kubernetes Manifests** (`k8s/`):
+   - Production-ready manifests with health checks, resource limits, security contexts
+
+### Setting Up the Pipeline
+
+**1. Configure Docker Hub Secrets (Required for CI):**
+In your GitHub repository, add these secrets:
+- `DOCKER_USERNAME`: Your Docker Hub username
+- `DOCKER_TOKEN`: Your Docker Hub Personal Access Token
+
+**2. Local Development Setup:**
+```bash
+# Set environment variables for local builds
+export DOCKER_USERNAME=<your-dockerhub-username>
+export DOCKER_TOKEN=<your-personal-access-token>
+```
+
+### Pipeline Workflows
+
+**Automated CI/CD (GitHub Actions):**
+- Push to `main` or `feature/docker*` or `feature/minikube*` branches triggers Docker build and push
+- Uses semantic versioning from `build.gradle`
+- Gracefully skips Docker push if credentials not configured
+
+**Manual Local Build and Deploy:**
+```bash
+# Build and push to Docker Hub
+./scripts/build-and-push.sh
+
+# Deploy to Minikube
+./scripts/deploy-minikube.sh
+```
+
 ## Container and Kubernetes Deployment
 
 **Environment Variables for Docker/Kubernetes:**

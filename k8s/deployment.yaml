@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: spring-sse-app
-        image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/spring-sse-example:0.0.1-SNAPSHOT
+        image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/spring-sse-example:${IMAGE_TAG}
         ports:
         - containerPort: 8080
           name: http

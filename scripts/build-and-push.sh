@@ -21,7 +21,15 @@ if [ -z "$DOCKER_TOKEN" ]; then
 fi
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-docker.io}
-IMAGE_TAG=${IMAGE_TAG:-0.0.1-SNAPSHOT}
+
+# Extract version from build.gradle if not provided
+if [ -z "$IMAGE_TAG" ]; then
+    IMAGE_TAG=$(grep "version = " build.gradle | cut -d "'" -f 2)
+    if [ -z "$IMAGE_TAG" ]; then
+        IMAGE_TAG="1.0.0"
+        echo -e "${YELLOW}Warning: Could not extract version from build.gradle, using default: $IMAGE_TAG${NC}"
+    fi
+fi
 
 echo -e "${YELLOW}Building and pushing Spring Boot SSE application...${NC}"
 echo "Registry: $DOCKER_REGISTRY"

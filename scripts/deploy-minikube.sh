@@ -11,7 +11,15 @@ NC='\033[0m' # No Color
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-docker.io}
 DOCKER_USERNAME=${DOCKER_USERNAME:-com.example}
-IMAGE_TAG=${IMAGE_TAG:-0.0.1-SNAPSHOT}
+
+# Extract version from build.gradle if not provided
+if [ -z "$IMAGE_TAG" ]; then
+    IMAGE_TAG=$(grep "version = " build.gradle | cut -d "'" -f 2)
+    if [ -z "$IMAGE_TAG" ]; then
+        IMAGE_TAG="1.0.0"
+        echo -e "${YELLOW}Warning: Could not extract version from build.gradle, using default: $IMAGE_TAG${NC}"
+    fi
+fi
 
 echo -e "${YELLOW}Deploying Spring Boot SSE application to Minikube...${NC}"
 
@@ -27,6 +35,11 @@ kubectl config use-context minikube
 # Create namespace
 echo -e "${YELLOW}Creating namespace...${NC}"
 kubectl apply -f k8s/namespace.yaml
+
+# Export variables for envsubst
+export DOCKER_REGISTRY
+export DOCKER_USERNAME  
+export IMAGE_TAG
 
 # Apply base manifests
 echo -e "${YELLOW}Applying base manifests...${NC}"
