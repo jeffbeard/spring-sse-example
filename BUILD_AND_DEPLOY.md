@@ -35,8 +35,12 @@ export DOCKER_TOKEN=<your-personal-access-token>
 # Start minikube if not running
 minikube start
 
-# Deploy application
-./scripts/deploy-minikube.sh
+# Build image in Minikube's Docker (recommended for local dev)
+eval $(minikube docker-env)
+./gradlew jibDockerBuild
+
+# Deploy application using Kustomize
+./scripts/deploy-minikube-kustomize.sh
 ```
 
 ## Pipeline Components
@@ -44,8 +48,8 @@ minikube start
 ### GitHub Actions CI/CD
 
 **Triggers:**
-- Push to `main` branch
-- Push to branches matching `feature/docker*` or `feature/minikube*`
+- Push to `main` branch (creates production tags)
+- Push to branches matching `feature/docker*` or `feature/minikube*` (creates dev tags)
 - Pull requests to `main`
 
 **Jobs:**
@@ -64,19 +68,25 @@ minikube start
 - Pushes to Docker Hub
 - Requires `DOCKER_USERNAME` and `DOCKER_TOKEN` environment variables
 
-#### `scripts/deploy-minikube.sh`
+#### `scripts/deploy-minikube-kustomize.sh`
 - Validates Minikube is running
-- Deploys using Kubernetes manifests in `k8s/`
-- Provides connection instructions
-- Uses environment variable substitution for image tags
+- Deploys using Kustomize overlays in `k8s/overlays/minikube/`
+- Auto-detects Docker credentials
+- Provides connection instructions and port-forward setup
+- Falls back to port-forward if Ingress tunnel unavailable
 
-### Kubernetes Manifests (`k8s/`)
+### Kubernetes Structure (Kustomize-based)
 
-- **namespace.yaml**: Creates dedicated namespace
-- **configmap.yaml**: Application configuration
+**Base Manifests (`k8s/base/`):**
 - **deployment.yaml**: Application deployment with health checks
-- **service.yaml**: LoadBalancer service
-- **minikube-resources.yaml**: Minikube-specific resource overrides
+- **service.yaml**: ClusterIP service for internal access
+- **configmap.yaml**: Base application configuration
+- **kustomization.yaml**: Base Kustomize configuration
+
+**Environment Overlays (`k8s/overlays/`):**
+- **minikube/**: Local development patches (1 replica, debug logging)
+- **dev/**: Development environment patches (2 replicas, ALB ingress)
+- **prod/**: Production patches (3 replicas, strict security, monitoring)
 
 ## Version Management
 
@@ -85,10 +95,10 @@ The pipeline uses semantic versioning from `build.gradle`:
 version = '1.0.0'
 ```
 
-This version is automatically used for:
-- Docker image tags
-- Kubernetes deployment labels
-- Build artifacts
+Image tagging strategy:
+- **Production (main branch)**: Clean semantic version (e.g., `1.0.0`)
+- **Development (feature branches)**: Timestamped versions (e.g., `1.0.0-dev-abc1234`)
+- **Kubernetes labels**: Environment-specific versioning for tracking deployments
 
 ## Security Features
 
@@ -116,14 +126,18 @@ docker images | grep spring-sse-example
 
 ### Kubernetes Deployment Issues
 ```bash
-# Check pod status
-kubectl get pods -n spring-sse-example
+# Check pod status (replace <env> with minikube/dev/prod)
+kubectl get pods -n spring-sse-<env>
 
 # View logs
-kubectl logs -f deployment/spring-sse-app -n spring-sse-example
+kubectl logs -f deployment/spring-sse-app -n spring-sse-<env>
 
 # Port forward for testing
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-example
+kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env>
+kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env>
+
+# Test Kustomize build
+kubectl kustomize k8s/overlays/<env>
 ```
 
 ### CI/CD Issues
@@ -151,6 +165,26 @@ curl -X POST -H "Content-Type: application/json" \
 open http://localhost:8080/test.html
 ```
 
-## Next Steps: EKS Deployment
+## Multi-Environment Deployment
 
-For production EKS deployment, see `scripts/deploy-eks.sh` and the EKS-specific documentation in `CLAUDE.md`.
+### EKS Development Environment
+```bash
+# Build and push image
+./scripts/build-and-push.sh
+
+# Deploy to EKS dev
+export EKS_CLUSTER_NAME=my-dev-cluster
+ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
+```
+
+### EKS Production Environment
+```bash
+# Deploy to EKS production (uses clean semantic versioning)
+export EKS_CLUSTER_NAME=my-prod-cluster
+ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
+```
+
+**Environment Differences:**
+- **Minikube**: 1 replica, debug logging, port-forward access
+- **Dev**: 2 replicas, ALB ingress, multi-version support
+- **Prod**: 3 replicas, strict security, monitoring integration

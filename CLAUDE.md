@@ -31,15 +31,15 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 **Docker and Container Commands:**
 ```bash
 # Build Docker image with Jib
-./gradlew jib            # Build and push to registry (requires DOCKER_USERNAME/DOCKER_PASSWORD)
+./gradlew jib            # Build and push to registry (requires DOCKER_USERNAME/DOCKER_TOKEN)
 
 # Build image locally
 ./gradlew jibDockerBuild # Build local Docker image
 
 # Run with Docker (local build)
-docker run -p 8080:8080 spring-sse-example:0.0.1-SNAPSHOT
+docker run -p 8080:8080 spring-sse-example:1.0.0
 
-# Build and push using script
+# Build and push using script (auto-detects Docker credentials)
 ./scripts/build-and-push.sh
 ```
 
@@ -186,7 +186,7 @@ export DOCKER_TOKEN=<your-personal-access-token>
 
 **Automated CI/CD (GitHub Actions):**
 - Push to `main` or `feature/docker*` or `feature/minikube*` branches triggers Docker build and push
-- Uses semantic versioning from `build.gradle`
+- Uses environment-aware image tagging: semantic version for prod, timestamped for dev
 - Gracefully skips Docker push if credentials not configured
 
 **Manual Local Build and Deploy:**
@@ -194,8 +194,14 @@ export DOCKER_TOKEN=<your-personal-access-token>
 # Build and push to Docker Hub
 ./scripts/build-and-push.sh
 
-# Deploy to Minikube
-./scripts/deploy-minikube.sh
+# Deploy to Minikube (Kustomize-based)
+./scripts/deploy-minikube-kustomize.sh
+
+# Deploy to EKS dev environment
+ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
+
+# Deploy to EKS prod environment
+ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ```
 
 ## Container and Kubernetes Deployment
@@ -203,9 +209,10 @@ export DOCKER_TOKEN=<your-personal-access-token>
 **Environment Variables for Docker/Kubernetes:**
 ```bash
 DOCKER_REGISTRY=docker.io           # Docker registry (default: docker.io)
-DOCKER_USERNAME=<your-username>     # Docker Hub username
-DOCKER_TOKEN=<your-access-token>    # Docker Hub Personal Access Token
-SPRING_PROFILES_ACTIVE=production   # Spring profile (minikube/production)
+DOCKER_USERNAME=<your-username>     # Docker Hub username (auto-detected if logged in)
+DOCKER_TOKEN=<your-access-token>    # Docker Hub Personal Access Token (optional if logged in)
+ENVIRONMENT=dev|prod                # Target environment for EKS deployments
+EKS_CLUSTER_NAME=<cluster-name>     # EKS cluster name for deployments
 ```
 
 **Minikube Deployment:**
@@ -213,16 +220,15 @@ SPRING_PROFILES_ACTIVE=production   # Spring profile (minikube/production)
 # Start minikube
 minikube start
 
-# Build and push image
-export DOCKER_USERNAME=<your-username>
-export DOCKER_TOKEN=<your-personal-access-token>
-./scripts/build-and-push.sh
+# Build image directly in minikube Docker (no push needed)
+eval $(minikube docker-env)
+./gradlew jibDockerBuild
 
-# Deploy to minikube
-./scripts/deploy-minikube.sh
+# Deploy to minikube using Kustomize
+./scripts/deploy-minikube-kustomize.sh
 
-# Access the service
-minikube service spring-sse-service -n spring-sse-example
+# Access via port-forward
+kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-minikube
 ```
 
 **EKS Deployment:**
@@ -230,36 +236,43 @@ minikube service spring-sse-service -n spring-sse-example
 # Configure AWS CLI and create EKS cluster
 aws eks create-cluster --name my-cluster --version 1.28 --role-arn <cluster-role-arn>
 
-# Build and push image
-export DOCKER_USERNAME=<your-username>
-export DOCKER_TOKEN=<your-personal-access-token>
+# Build and push image (uses existing Docker login if available)
 ./scripts/build-and-push.sh
 
-# Deploy to EKS
+# Deploy to EKS dev environment
 export EKS_CLUSTER_NAME=my-cluster
-./scripts/deploy-eks.sh
+ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
+
+# Deploy to EKS prod environment (manual approval recommended)
+ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ```
 
-**Kubernetes Resources:**
-- **Namespace**: `spring-sse-example`
-- **Deployment**: 2 replicas (1 for Minikube), rolling updates
-- **Service**: LoadBalancer type for external access
-- **ConfigMap**: Application configuration
-- **Resource Limits**: 512Mi memory, 500m CPU (256Mi/250m for Minikube)
-- **Health Checks**: Liveness and readiness probes on `/actuator/health`
+**Kubernetes Resources (Kustomize-based):**
+- **Namespaces**: Environment-specific (`spring-sse-minikube`, `spring-sse-dev`, `spring-sse-prod`)
+- **Base Manifests**: `k8s/base/` (deployment, service, configmap)
+- **Environment Overlays**: `k8s/overlays/{minikube,dev,prod}/` with specific patches
+- **Deployment**: 1 replica (Minikube), 2 replicas (dev), 3 replicas (prod)
+- **Service**: ClusterIP with Ingress for external access
+- **ConfigMap**: Environment-specific configuration patches
+- **Resource Limits**: Optimized per environment (256Mi/250m for Minikube, 512Mi/500m for dev, 1Gi/1000m for prod)
+- **Health Checks**: Liveness and readiness probes on management port 8081
 - **Security**: Non-root user (1001), read-only filesystem, dropped capabilities
 
 **Monitoring and Troubleshooting:**
 ```bash
-# Check pod status
-kubectl get pods -n spring-sse-example
+# Check pod status (replace <env> with minikube/dev/prod)
+kubectl get pods -n spring-sse-<env>
 
 # View logs
-kubectl logs -f deployment/spring-sse-app -n spring-sse-example
+kubectl logs -f deployment/spring-sse-app -n spring-sse-<env>
 
 # Port forward for local access
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-example
+kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env>
+kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env>
 
 # Check health endpoint
 curl http://localhost:8081/actuator/health
+
+# Deploy using Kustomize directly
+kubectl kustomize k8s/overlays/<env> | kubectl apply -f -
 ```

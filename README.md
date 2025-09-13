@@ -45,9 +45,9 @@ Broadcasts a custom event to all connected SSE clients.
 
 ### Health Check
 ```
-GET /api/
+GET /actuator/health
 ```
-Returns server status message.
+Returns application health status (available on management port 8081).
 
 ## Event Types
 

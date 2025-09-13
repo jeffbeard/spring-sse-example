@@ -16,25 +16,35 @@ The application can be deployed using two main approaches:
 - **Health Checks**: Liveness and readiness probes
 - **Configuration**: ConfigMap for application settings
 
-## Deployment Scripts
+## Deployment Scripts (Kustomize-based)
 
-### Interactive Deployment (Minikube/Development)
+### Minikube Development
 ```bash
-./scripts/deploy-minikube.sh
+./scripts/deploy-minikube-kustomize.sh
 ```
-- Deploys to Minikube with automatic environment detection
+- Deploys using Kustomize overlays (`k8s/overlays/minikube/`)
+- Namespace: `spring-sse-minikube`
+- 1 replica with debug logging
+- Auto-detects Docker credentials
 - Falls back to port-forwarding if Ingress tunnel unavailable
-- Provides interactive browser opening
-- Suitable for local development
 
-### Automated Deployment (CI/CD)
+### EKS Development Environment
 ```bash
-./scripts/deploy-minikube-auto.sh
+ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
 ```
-- Fully automated deployment for CI/CD pipelines
-- No user interaction required
-- Provides service URLs for testing
-- Includes automated health checks
+- Deploys using Kustomize overlays (`k8s/overlays/dev/`)
+- Namespace: `spring-sse-dev`
+- 2 replicas with ALB ingress
+- Supports multiple concurrent versions
+
+### EKS Production Environment
+```bash
+ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
+```
+- Deploys using Kustomize overlays (`k8s/overlays/prod/`)
+- Namespace: `spring-sse-prod`
+- 3 replicas with strict security policies
+- Manual deployment recommended
 
 ## Access Methods
 
@@ -51,8 +61,9 @@ The application can be deployed using two main approaches:
 ### 2. Port-Forward Access (Development)
 **Commands**:
 ```bash
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-example &
-kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-example &
+# Replace <env> with minikube/dev/prod
+kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env> &
+kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env> &
 ```
 
 **URLs**:
@@ -63,23 +74,30 @@ kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-example 
 ## Production Configuration
 
 ### EKS Deployment
-For Amazon EKS, the Ingress configuration includes both nginx and ALB controller annotations:
+For Amazon EKS, the Ingress configurations are environment-specific:
 
+**Development (`k8s/overlays/dev/ingress.yaml`):**
 ```yaml
-# k8s/ingress.yaml includes:
 annotations:
-  # AWS Load Balancer Controller (for EKS)
   alb.ingress.kubernetes.io/scheme: internet-facing
   alb.ingress.kubernetes.io/target-type: ip
-  # nginx Ingress Controller (for other environments)  
-  nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-  nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true
+```
+
+**Production (`k8s/overlays/prod/ingress.yaml`):**
+```yaml
+annotations:
+  alb.ingress.kubernetes.io/scheme: internet-facing
+  alb.ingress.kubernetes.io/target-type: ip
+  # SSL/TLS configuration (TODO: Add certificate ARN)
+  # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:region:account:certificate/cert-id
 ```
 
 ### Multi-Environment Support
-The Ingress configuration supports both:
-- **Default routing** (works with direct IP access)
-- **Host-based routing** (for production domains)
+Each environment has specific configurations:
+- **Minikube**: nginx ingress with local access
+- **Dev**: ALB ingress with sticky sessions for testing multiple versions
+- **Production**: ALB ingress with SSL/TLS, custom domains, and WAF integration
 
 ## Security Features
 
@@ -93,17 +111,20 @@ The Ingress configuration supports both:
 
 ### Status Commands
 ```bash
-# Check deployment status
-kubectl get pods -n spring-sse-example
+# Check deployment status (replace <env> with minikube/dev/prod)
+kubectl get pods -n spring-sse-<env>
 
 # View logs
-kubectl logs -f deployment/spring-sse-app -n spring-sse-example
+kubectl logs -f deployment/spring-sse-app -n spring-sse-<env>
 
 # Check service endpoints
-kubectl get service -n spring-sse-example -o wide
+kubectl get service -n spring-sse-<env> -o wide
 
 # Verify Ingress
-kubectl get ingress -n spring-sse-example -o wide
+kubectl get ingress -n spring-sse-<env> -o wide
+
+# Test Kustomize build
+kubectl kustomize k8s/overlays/<env>
 ```
 
 ### Common Issues
@@ -114,8 +135,9 @@ kubectl get ingress -n spring-sse-example -o wide
    - Check ingress addon: `minikube addons list | grep ingress`
 
 2. **Pod Not Starting**:
-   - Check image pull: `kubectl describe pod -n spring-sse-example`
+   - Check image pull: `kubectl describe pod -n spring-sse-<env>`
    - Verify resource availability: `kubectl top nodes`
+   - Check Kustomize build: `kubectl kustomize k8s/overlays/<env>`
 
 3. **SSE Connection Issues**:
    - Verify proxy timeouts in Ingress configuration
@@ -180,7 +202,23 @@ logging.level.com.example: "INFO"
 
 ## Resources
 
-- Kubernetes manifests: `k8s/`
-- Deployment scripts: `scripts/`
-- Configuration: `k8s/configmap.yaml`
-- Monitoring: `/actuator/health`, `/actuator/metrics`
+- **Base manifests**: `k8s/base/` (deployment, service, configmap)
+- **Environment overlays**: `k8s/overlays/{minikube,dev,prod}/`
+- **Deployment scripts**: `scripts/deploy-*-kustomize.sh`
+- **Configuration**: Environment-specific patches in overlays
+- **Monitoring**: `/actuator/health`, `/actuator/metrics` (port 8081)
+
+## Kustomize Commands
+
+```bash
+# Build manifests for specific environment
+kubectl kustomize k8s/overlays/minikube
+kubectl kustomize k8s/overlays/dev
+kubectl kustomize k8s/overlays/prod
+
+# Apply directly with kustomize
+kubectl apply -k k8s/overlays/<env>
+
+# Delete environment
+kubectl delete -k k8s/overlays/<env>
+```
