@@ -47,8 +47,8 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 # Build image locally
 ./gradlew jibDockerBuild # Build local Docker image
 
-# Run with Docker (local build)
-docker run -p 8080:8080 spring-sse-example:1.0.0
+# Run with Docker (uses jeffbeard Docker Hub repository)
+docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.0
 
 # Build and push using script (auto-detects Docker credentials)
 ./scripts/build-and-push.sh

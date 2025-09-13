@@ -11,3 +11,7 @@ resources:
 patches:
   - path: deployment-patch.yaml
   - path: configmap-patch.yaml
+
+images:
+  - name: spring-sse-example
+    newName: jeffbeard/spring-sse-example

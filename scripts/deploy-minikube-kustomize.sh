@@ -25,7 +25,7 @@ if [ -z "$DOCKER_USERNAME" ]; then
         fi
 
         if [ -z "$DOCKER_USERNAME" ]; then
-            DOCKER_USERNAME="com.example"
+            DOCKER_USERNAME="jeffbeard"
             echo -e "${YELLOW}Warning: Could not detect Docker username, using default: $DOCKER_USERNAME${NC}"
             echo -e "${YELLOW}Set DOCKER_USERNAME environment variable to override${NC}"
         else
