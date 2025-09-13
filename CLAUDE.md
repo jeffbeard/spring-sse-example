@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🔒 SECURITY RESTRICTIONS
+
+**CRITICAL: Claude Code is STRICTLY PROHIBITED from:**
+- Accessing, reading, viewing, or inspecting ANY repository secrets
+- Using commands like `gh secret list`, `gh secret view`, or similar secret-related operations
+- Attempting to read environment variables containing credentials or sensitive information
+- Viewing or modifying any configuration that might contain secrets or sensitive data
+- Any operations that could expose credentials, tokens, passwords, or other sensitive information
+
+All secret management, credential configuration, and sensitive data handling must be performed manually by authorized users only.
+
 ## Project Overview
 
 This is a Spring Boot application demonstrating Server-Sent Events (SSE) implementation using Spring Web and Spring Boot DevTools. The application streams real-time events to connected clients via HTTP SSE protocol.
@@ -170,14 +181,19 @@ The build pipeline provides complete automation from code to deployment:
 
 ### Setting Up the Pipeline
 
-**1. Configure Docker Hub Secrets (Required for CI):**
-In your GitHub repository, add these secrets:
+**IMPORTANT SECURITY NOTE:**
+- Claude Code is NEVER allowed to access, read, modify, or inspect repository secrets
+- Claude Code must NEVER attempt to view GitHub secrets, environment variables containing credentials, or any sensitive configuration
+- All secret management must be handled manually by authorized users only
+
+**1. Configure Docker Hub Secrets (Manual - User Only):**
+Repository owners must manually add these GitHub repository secrets:
 - `DOCKER_USERNAME`: Your Docker Hub username
 - `DOCKER_TOKEN`: Your Docker Hub Personal Access Token
 
 **2. Local Development Setup:**
 ```bash
-# Set environment variables for local builds
+# Set environment variables for local builds (user configuration only)
 export DOCKER_USERNAME=<your-dockerhub-username>
 export DOCKER_TOKEN=<your-personal-access-token>
 ```
