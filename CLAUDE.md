@@ -40,18 +40,23 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 ```
 
 **Docker and Container Commands:**
-```bash
-# Build Docker image with Jib
-./gradlew jib            # Build and push to registry (requires DOCKER_USERNAME/DOCKER_TOKEN)
 
-# Build image locally
+**IMPORTANT: This project uses Gradle Jib for Docker build and push - NOT the build-and-push.sh script.**
+
+```bash
+# Complete build and push workflow (PREFERRED METHOD)
+./gradlew clean                           # Clean old artifacts
+./gradlew build                           # Build and test project
+DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docker Hub
+
+# Alternative: Build image locally only (no push)
 ./gradlew jibDockerBuild # Build local Docker image
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
-docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.0
+docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.1
 
-# Build and push using script (auto-detects Docker credentials)
-./scripts/build-and-push.sh
+# Legacy script (NOT USED in this project)
+# ./scripts/build-and-push.sh
 ```
 
 **Testing SSE Endpoints:**
@@ -173,7 +178,6 @@ The build pipeline provides complete automation from code to deployment:
    - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on main and feature branches)
    
 2. **Local Scripts**:
-   - `scripts/build-and-push.sh`: Build and push Docker images locally
    - `scripts/deploy-minikube.sh`: Deploy to local Minikube cluster
 
 3. **Kubernetes Manifests** (`k8s/`):
@@ -207,8 +211,10 @@ export DOCKER_TOKEN=<your-personal-access-token>
 
 **Manual Local Build and Deploy:**
 ```bash
-# Build and push to Docker Hub
-./scripts/build-and-push.sh
+# Build and push to Docker Hub (PREFERRED METHOD - uses Gradle Jib)
+./gradlew clean
+./gradlew build
+DOCKER_USERNAME=jeffbeard ./gradlew jib
 
 # Deploy to Minikube (Kustomize-based)
 ./scripts/deploy-minikube-kustomize.sh
@@ -252,8 +258,8 @@ kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-minikube
 # Configure AWS CLI and create EKS cluster
 aws eks create-cluster --name my-cluster --version 1.28 --role-arn <cluster-role-arn>
 
-# Build and push image (uses existing Docker login if available)
-./scripts/build-and-push.sh
+# Build and push image (uses Gradle Jib with existing Docker login)
+./gradlew clean && ./gradlew build && DOCKER_USERNAME=jeffbeard ./gradlew jib
 
 # Deploy to EKS dev environment
 export EKS_CLUSTER_NAME=my-cluster
