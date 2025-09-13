@@ -2,12 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: spring-sse-service
-  namespace: spring-sse-example
   labels:
     app.kubernetes.io/name: spring-sse-example
     app.kubernetes.io/component: service
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app.kubernetes.io/name: spring-sse-example
     app.kubernetes.io/component: application

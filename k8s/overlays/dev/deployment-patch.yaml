@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-sse-app
+spec:
+  replicas: 2  # Multiple replicas for dev testing
+  template:
+    metadata:
+      labels:
+        version: "${IMAGE_TAG}"  # Label for version tracking
+    spec:
+      containers:
+      - name: spring-sse-app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "dev"
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: JAVA_OPTS
+          value: "-Xmx256m -Xms128m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

@@ -9,15 +9,32 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Check required environment variables
+# Check Docker authentication
 if [ -z "$DOCKER_USERNAME" ]; then
-    echo -e "${RED}Error: DOCKER_USERNAME environment variable is required${NC}"
-    exit 1
+    # Try to get from current Docker login
+    if docker info 2>/dev/null | grep -q "Username"; then
+        DOCKER_USERNAME=$(docker info 2>/dev/null | grep "Username" | awk '{print $2}')
+        echo -e "${GREEN}Using Docker Hub username from current login: $DOCKER_USERNAME${NC}"
+    else
+        echo -e "${RED}Error: Not logged into Docker Hub and DOCKER_USERNAME not set${NC}"
+        echo -e "${YELLOW}Please either:${NC}"
+        echo "  1. Run: docker login"
+        echo "  2. Set: export DOCKER_USERNAME=<your-username>"
+        exit 1
+    fi
 fi
 
+# Check if we can push (either logged in or have token)
 if [ -z "$DOCKER_TOKEN" ]; then
-    echo -e "${RED}Error: DOCKER_TOKEN environment variable is required (Docker Hub Personal Access Token)${NC}"
-    exit 1
+    # Check if already logged in
+    if ! docker info 2>/dev/null | grep -q "Username"; then
+        echo -e "${RED}Error: Not logged into Docker Hub${NC}"
+        echo -e "${YELLOW}Please either:${NC}"
+        echo "  1. Run: docker login"
+        echo "  2. Set: export DOCKER_TOKEN=<your-personal-access-token>"
+        exit 1
+    fi
+    echo -e "${GREEN}Using existing Docker Hub login${NC}"
 fi
 
 DOCKER_REGISTRY=${DOCKER_REGISTRY:-docker.io}
@@ -36,9 +53,11 @@ echo "Registry: $DOCKER_REGISTRY"
 echo "Username: $DOCKER_USERNAME"
 echo "Image Tag: $IMAGE_TAG"
 
-# Login to Docker registry using personal access token
-echo -e "${YELLOW}Logging in to Docker registry...${NC}"
-echo $DOCKER_TOKEN | docker login $DOCKER_REGISTRY -u $DOCKER_USERNAME --password-stdin
+# Login to Docker registry if token provided
+if [ ! -z "$DOCKER_TOKEN" ]; then
+    echo -e "${YELLOW}Logging in to Docker registry...${NC}"
+    echo $DOCKER_TOKEN | docker login $DOCKER_REGISTRY -u $DOCKER_USERNAME --password-stdin
+fi
 
 # Build and push using Jib
 echo -e "${YELLOW}Building and pushing image with Jib...${NC}"

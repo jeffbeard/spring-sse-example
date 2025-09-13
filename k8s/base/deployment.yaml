@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: spring-sse-app
-  namespace: spring-sse-example
   labels:
     app.kubernetes.io/name: spring-sse-example
     app.kubernetes.io/component: application
@@ -27,7 +26,7 @@ spec:
     spec:
       containers:
       - name: spring-sse-app
-        image: ${DOCKER_REGISTRY}/${DOCKER_USERNAME}/spring-sse-example:${IMAGE_TAG}
+        image: spring-sse-example:latest
         ports:
         - containerPort: 8080
           name: http

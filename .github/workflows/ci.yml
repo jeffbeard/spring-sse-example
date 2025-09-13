@@ -108,28 +108,51 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x gradlew
       
-    - name: Extract version from build.gradle
+    - name: Extract version and set image tags
       id: version
       run: |
         VERSION=$(grep "version = " build.gradle | cut -d "'" -f 2)
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+        # Set environment-specific tags
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Production uses semantic version only
+          IMAGE_TAG="${VERSION}"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        else
+          # Dev/feature branches include commit SHA for uniqueness
+          SHORT_SHA=${GITHUB_SHA::7}
+          IMAGE_TAG="${VERSION}-dev-${SHORT_SHA}"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        fi
+
         echo "Extracted version: $VERSION"
-        
+        echo "Image tag: $IMAGE_TAG"
+
     - name: Build and push Docker image
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
         DOCKER_REGISTRY: docker.io
-        IMAGE_TAG: ${{ steps.version.outputs.VERSION }}
+        IMAGE_TAG: ${{ steps.version.outputs.IMAGE_TAG }}
       run: |
         if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_TOKEN" ]; then
           echo "⚠️ Docker credentials not configured. Skipping Docker push."
           echo "To enable Docker push, add DOCKER_USERNAME and DOCKER_TOKEN secrets to your repository."
           exit 0
         fi
-        
+
         echo "Building and pushing Docker image..."
         echo "$DOCKER_TOKEN" | docker login docker.io -u "$DOCKER_USERNAME" --password-stdin
-        ./gradlew jib
-        
+
+        # Configure Jib to use the environment-specific tag
+        export IMAGE_TAG
+        ./gradlew jib -Djib.to.tags=$IMAGE_TAG
+
         echo "✅ Successfully pushed image: $DOCKER_REGISTRY/$DOCKER_USERNAME/spring-sse-example:$IMAGE_TAG"
+
+        # Also tag as 'latest' for main branch
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ./gradlew jib -Djib.to.tags=latest
+          echo "✅ Also tagged as: latest"
+        fi
