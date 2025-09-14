@@ -74,7 +74,8 @@ public class EventService {
                 "Order processed successfully", 
                 "System maintenance scheduled",
                 "Database backup completed",
-                "New feature deployed"
+                "New feature deployed",
+                "Melba told me a secret"
             };
             String randomMessage = sampleMessages[(int) (Math.random() * sampleMessages.length)];
             broadcastEvent("notification", randomMessage);
