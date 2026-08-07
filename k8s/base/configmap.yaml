@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-sse-config
+  labels:
+    app.kubernetes.io/name: spring-sse-example
+    app.kubernetes.io/component: config
+data:
+  # Spring Boot configuration
+  server.port: "8080"
+  management.server.port: "8081"
+  management.endpoint.health.enabled: "true"
+  management.endpoints.web.exposure.include: "health,info,metrics"
+  management.endpoint.health.show-details: "when_authorized"
+  
+  # CORS configuration - restrict in production
+  spring.web.cors.allowed-origins: "*"
+  spring.web.cors.allowed-methods: "GET,POST,OPTIONS"
+  spring.web.cors.allowed-headers: "*"
+  
+  # SSE configuration
+  spring.mvc.async.request-timeout: "0"
+  
+  # Logging configuration
+  logging.level.com.example: "INFO"
+  logging.level.org.springframework.web: "INFO"

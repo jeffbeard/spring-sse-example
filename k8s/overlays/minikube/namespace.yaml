@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spring-sse-minikube
+  labels:
+    app.kubernetes.io/name: spring-sse-example
+    environment: minikube

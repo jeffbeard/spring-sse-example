@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spring-sse-dev
+  labels:
+    app.kubernetes.io/name: spring-sse-example
+    environment: dev

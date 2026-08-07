@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-sse-app
+spec:
+  replicas: 1  # Single replica for local development
+  template:
+    spec:
+      containers:
+      - name: spring-sse-app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "minikube"
+        - name: JAVA_OPTS
+          value: "-Xmx128m -Xms64m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"

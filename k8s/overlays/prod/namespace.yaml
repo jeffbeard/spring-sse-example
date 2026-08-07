@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spring-sse-prod
+  labels:
+    app.kubernetes.io/name: spring-sse-example
+    environment: prod

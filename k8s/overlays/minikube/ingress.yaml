@@ -1,0 +1,84 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spring-sse-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Enable long-running connections for SSE
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  labels:
+    app.kubernetes.io/name: spring-sse-example
+    app.kubernetes.io/component: ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  # Default rule without host (works with direct IP access)
+  - http:
+      paths:
+      # Management/actuator endpoints (higher priority)
+      - path: /actuator
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 8081
+      # Main application paths
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+      - path: /test.html
+        pathType: Exact
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+  # Named host rules for production use
+  - host: spring-sse.local
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+      - path: /test.html
+        pathType: Exact
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 80
+  - host: spring-sse-mgmt.local
+    http:
+      paths:
+      - path: /actuator
+        pathType: Prefix
+        backend:
+          service:
+            name: spring-sse-service
+            port:
+              number: 8081

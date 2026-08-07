@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-sse-config
+data:
+  # Production environment configuration
+  management.endpoint.health.show-details: "never"
+
+  # Production logging levels
+  logging.level.com.example: "WARN"
+  logging.level.org.springframework.web: "WARN"
+  logging.level.root: "ERROR"
+
+  # Production CORS - MUST BE UPDATED with actual domains
+  spring.web.cors.allowed-origins: "https://your-production-domain.com"  # TODO: Update with actual production domain

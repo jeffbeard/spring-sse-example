@@ -3,10 +3,11 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.6'
     id 'java'
     id 'jacoco'
+    id 'com.google.cloud.tools.jib' version '3.4.0'
 }
 
 group = 'com.example'
-version = '0.0.1-SNAPSHOT'
+version = '1.0.1'
 
 java {
     sourceCompatibility = '17'
@@ -18,6 +19,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -45,5 +47,36 @@ jacocoTestCoverageVerification {
                 minimum = 0.5
             }
         }
+    }
+}
+
+// Jib configuration for Docker image building
+jib {
+    from {
+        image = 'eclipse-temurin:17-jre'
+    }
+    to {
+        image = "${System.getenv('DOCKER_REGISTRY') ?: 'docker.io'}/${System.getenv('DOCKER_USERNAME') ?: project.group}/${project.name}:${project.version}"
+        // Configure auth for Docker Hub using personal access token
+        if (System.getenv('DOCKER_USERNAME') != null && System.getenv('DOCKER_TOKEN') != null) {
+            auth {
+                username = System.getenv('DOCKER_USERNAME')
+                password = System.getenv('DOCKER_TOKEN')
+            }
+        }
+    }
+    container {
+        jvmFlags = ['-Xmx512m', '-Xms256m', '-XX:+UseG1GC', '-XX:MaxGCPauseMillis=200']
+        ports = ['8080']
+        user = '1001:1001'
+        workingDirectory = '/app'
+        environment = [
+            'SPRING_PROFILES_ACTIVE': System.getenv('SPRING_PROFILES_ACTIVE') ?: 'production'
+        ]
+        labels = [
+            'maintainer': 'spring-sse-example',
+            'version': project.version,
+            'description': 'Spring Boot SSE example application'
+        ]
     }
 }
