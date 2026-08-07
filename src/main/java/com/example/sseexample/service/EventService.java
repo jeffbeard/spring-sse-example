@@ -1,11 +1,15 @@
 package com.example.sseexample.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -16,6 +20,7 @@ public class EventService {
 
     private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public EventService() {
         this(true);
@@ -48,9 +53,8 @@ public class EventService {
     }
 
     public void broadcastEvent(String eventName, String data) {
-        String timestamp = getCurrentTimestamp();
-        String eventData = String.format("{\"message\":\"%s\", \"timestamp\":\"%s\"}", data, timestamp);
-        
+        String eventData = buildPayload(data);
+
         emitters.removeIf(emitter -> {
             try {
                 emitter.send(SseEmitter.event()
@@ -80,6 +84,18 @@ public class EventService {
             String randomMessage = sampleMessages[(int) (Math.random() * sampleMessages.length)];
             broadcastEvent("notification", randomMessage);
         }, 10, 15, TimeUnit.SECONDS);
+    }
+
+    String buildPayload(String message) {
+        Map<String, String> payload = new LinkedHashMap<>();
+        payload.put("message", message);
+        payload.put("timestamp", getCurrentTimestamp());
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException e) {
+            // String values cannot fail serialization; fall back defensively.
+            return "{\"message\":null,\"timestamp\":null}";
+        }
     }
 
     private String getCurrentTimestamp() {
