@@ -8,7 +8,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
 public class EventController {
 
     private final EventService eventService;
