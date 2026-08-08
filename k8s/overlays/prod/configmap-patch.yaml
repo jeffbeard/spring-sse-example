@@ -12,4 +12,4 @@ data:
   logging.level.root: "ERROR"
 
   # Production CORS - MUST BE UPDATED with actual domains
-  spring.web.cors.allowed-origins: "https://your-production-domain.com"  # TODO: Update with actual production domain
+  app.cors.allowed-origins: "https://your-production-domain.com"  # TODO: Update with actual production domain

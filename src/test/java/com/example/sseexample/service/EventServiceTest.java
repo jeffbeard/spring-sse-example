@@ -179,6 +179,33 @@ class EventServiceTest {
     }
 
     @Test
+    void buildPayload_WithQuoteInMessage_ProducesValidJson() throws Exception {
+        // Given a message containing characters that would break naive string formatting
+        String message = "he said \"hi\" and \\ backslash";
+
+        // When
+        String json = eventService.buildPayload(message);
+
+        // Then it must be valid JSON whose message field equals the original input
+        com.fasterxml.jackson.databind.JsonNode node =
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+        assertEquals(message, node.get("message").asText());
+        assertTrue(node.has("timestamp"));
+    }
+
+    @Test
+    void buildPayload_WithNullMessage_ProducesValidJson() throws Exception {
+        // When
+        String json = eventService.buildPayload(null);
+
+        // Then it must still be valid JSON (no injection, no crash)
+        com.fasterxml.jackson.databind.JsonNode node =
+            new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+        assertTrue(node.has("message"));
+        assertTrue(node.has("timestamp"));
+    }
+
+    @Test
     void concurrentConnections_ShouldHandleMultipleEmitters() throws Exception {
         // Given
         EventService service = new EventService(false);

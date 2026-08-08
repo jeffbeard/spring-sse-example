@@ -108,7 +108,12 @@
                 // If not JSON, use as is
             }
             
-            eventDiv.innerHTML = `<strong>[${type.toUpperCase()}]</strong> ${timestamp}: ${message}`;
+            // Build via DOM/textContent, never innerHTML: message is server-broadcast,
+            // attacker-controllable input and must not be parsed as HTML (XSS).
+            const label = document.createElement('strong');
+            label.textContent = `[${type.toUpperCase()}]`;
+            eventDiv.appendChild(label);
+            eventDiv.appendChild(document.createTextNode(` ${timestamp}: ${message}`));
             eventLog.appendChild(eventDiv);
             eventLog.scrollTop = eventLog.scrollHeight;
         }

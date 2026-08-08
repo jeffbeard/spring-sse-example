@@ -11,4 +11,4 @@ data:
   logging.level.org.springframework.web: "INFO"
 
   # Dev-specific CORS (can be more restrictive than minikube)
-  spring.web.cors.allowed-origins: "*"  # TODO: Update with actual dev domains
+  app.cors.allowed-origins: "*"  # TODO: Update with actual dev domains
