@@ -145,14 +145,18 @@ jobs:
         echo "Building and pushing Docker image..."
         echo "$DOCKER_TOKEN" | docker login docker.io -u "$DOCKER_USERNAME" --password-stdin
 
-        # Configure Jib to use the environment-specific tag
-        export IMAGE_TAG
-        ./gradlew jib -Djib.to.tags=$IMAGE_TAG
+        IMAGE_REF="$DOCKER_REGISTRY/$DOCKER_USERNAME/spring-sse-example"
 
-        echo "✅ Successfully pushed image: $DOCKER_REGISTRY/$DOCKER_USERNAME/spring-sse-example:$IMAGE_TAG"
+        # Override the FULL destination image, not jib.to.tags.
+        # jib.to.tags only adds tags and still pushes the tag baked into
+        # jib.to.image (project.version). On a feature branch that would also
+        # republish the plain release tag and clobber the production image.
+        ./gradlew jib -Djib.to.image="$IMAGE_REF:$IMAGE_TAG"
 
-        # Also tag as 'latest' for main branch
+        echo "✅ Successfully pushed image: $IMAGE_REF:$IMAGE_TAG"
+
+        # Also tag as 'latest' for main branch only
         if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          ./gradlew jib -Djib.to.tags=latest
+          ./gradlew jib -Djib.to.image="$IMAGE_REF:latest"
           echo "✅ Also tagged as: latest"
         fi
