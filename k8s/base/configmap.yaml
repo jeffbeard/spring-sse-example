@@ -13,10 +13,9 @@ data:
   management.endpoints.web.exposure.include: "health,info,metrics"
   management.endpoint.health.show-details: "when_authorized"
   
-  # CORS configuration - restrict in production
-  spring.web.cors.allowed-origins: "*"
-  spring.web.cors.allowed-methods: "GET,POST,OPTIONS"
-  spring.web.cors.allowed-headers: "*"
+  # CORS configuration - consumed by CorsConfig (app.cors.allowed-origins).
+  # Restrict in production overlays. Methods are fixed in CorsConfig.
+  app.cors.allowed-origins: "*"
   
   # SSE configuration
   spring.mvc.async.request-timeout: "0"
