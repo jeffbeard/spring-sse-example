@@ -52,7 +52,7 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 # Alternative: Build image locally only (no push)
 ./gradlew jibDockerBuild # Build local Docker image
 
-# Verify spring-boot-devtools never reaches the image (runs in CI before push)
+# Verify spring-boot-devtools never reaches the image (runs in CI on every branch)
 ./gradlew verifyNoDevtoolsInImage
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
@@ -83,6 +83,12 @@ open http://localhost:8080/test.html
 - CORS configured for all origins (development only)
 - Static HTML test client available at `/test.html`
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
+
+## Supply Chain Pinning
+
+- **GitHub Actions** are pinned by commit SHA with a trailing `# v4` comment. Dependabot understands SHA pins and bumps both, so pinning does not mean going stale.
+- **Jib base image** is pinned by digest in `build.gradle`. Dependabot has no ecosystem for it; refresh manually with the command in the comment beside the pin.
+- **Image scanning**: the CI `image` job builds a local tarball, verifies devtools is absent, then runs Trivy. It reports HIGH and CRITICAL but fails only on CRITICAL — HIGH findings in a base image are frequently unactionable, and failing on them trains people to ignore the job.
 
 ## Versioning and Release Conventions
 
