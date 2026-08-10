@@ -52,6 +52,9 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 # Alternative: Build image locally only (no push)
 ./gradlew jibDockerBuild # Build local Docker image
 
+# Verify spring-boot-devtools never reaches the image (runs in CI before push)
+./gradlew verifyNoDevtoolsInImage
+
 # Run with Docker (uses jeffbeard Docker Hub repository)
 docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.1
 

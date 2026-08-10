@@ -17,6 +17,24 @@ repositories {
     mavenCentral()
 }
 
+// Spring Boot puts developmentOnly dependencies on the main runtime classpath, and Jib
+// containerizes exactly that classpath. Left alone, devtools ships in the image and —
+// because Jib runs an exploded classpath rather than a fat jar — actually activates
+// there, opening a LiveReload listener on 35729 (issue #17).
+//
+// The exclusion is scoped to image builds so that bootRun and IDE runs keep hot reload.
+// That scoping is a heuristic, so it is not trusted: verifyNoDevtoolsInImage below
+// fails the build if devtools reaches the image by any route.
+def imageTaskPattern = ~/(?i).*(jib|verifynodevtoolsinimage).*/
+def buildingImage = gradle.startParameter.taskNames.any { imageTaskPattern.matcher(it).matches() }
+if (buildingImage) {
+    configurations {
+        runtimeClasspath {
+            exclude group: 'org.springframework.boot', module: 'spring-boot-devtools'
+        }
+    }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -47,6 +65,46 @@ jacocoTestCoverageVerification {
                 minimum = 0.5
             }
         }
+    }
+}
+
+/**
+ * Fails the build if spring-boot-devtools reaches the container image (issue #17).
+ * Scans the real image tarball rather than reasoning about the classpath, so it holds
+ * regardless of how the image was assembled.
+ */
+tasks.register('verifyNoDevtoolsInImage') {
+    group = 'verification'
+    description = 'Fails if spring-boot-devtools is present in the built container image'
+    dependsOn tasks.named('jibBuildTar')
+
+    doLast {
+        def imageTar = layout.buildDirectory.file('jib-image.tar').get().asFile
+        def workDir = layout.buildDirectory.dir('image-verify').get().asFile
+        project.delete(workDir)
+        project.copy {
+            from tarTree(imageTar)
+            into workDir
+        }
+
+        def offenders = []
+        def layers = 0
+        workDir.eachFileRecurse { file ->
+            if (file.name.endsWith('.tar.gz')) {
+                layers++
+                tarTree(resources.gzip(file)).visit { entry ->
+                    if (entry.name.toLowerCase().contains('devtools')) {
+                        offenders << entry.path
+                    }
+                }
+            }
+        }
+
+        if (!offenders.isEmpty()) {
+            throw new GradleException(
+                "spring-boot-devtools found in container image: ${offenders.join(', ')}")
+        }
+        logger.lifecycle("verifyNoDevtoolsInImage: clean (${layers} layers scanned)")
     }
 }
 
