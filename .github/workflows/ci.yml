@@ -80,6 +80,27 @@ jobs:
         name: jar-artifact
         path: build/libs/*.jar
 
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # The runner image normally ships kubectl; install a pinned one if it does not,
+    # so this job never depends on an unversioned preinstalled tool.
+    - name: Ensure kubectl is available
+      run: |
+        if ! command -v kubectl >/dev/null 2>&1; then
+          KUBECTL_VERSION=v1.31.0
+          curl -sSLo kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+        fi
+        kubectl version --client
+
+    # kubectl ships an embedded kustomize, so this needs no cluster.
+    - name: Verify Kustomize overlays pin a version-matched image tag
+      run: ./scripts/verify-manifests.sh
+
   docker:
     runs-on: ubuntu-latest
     needs: test

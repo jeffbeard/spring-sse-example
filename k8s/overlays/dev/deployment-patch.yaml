@@ -5,9 +5,6 @@ metadata:
 spec:
   replicas: 2  # Multiple replicas for dev testing
   template:
-    metadata:
-      labels:
-        version: "${IMAGE_TAG}"  # Label for version tracking
     spec:
       containers:
       - name: spring-sse-app

@@ -5,7 +5,8 @@ metadata:
   labels:
     app.kubernetes.io/name: spring-sse-example
     app.kubernetes.io/component: application
-    app.kubernetes.io/version: "0.0.1-SNAPSHOT"
+    # app.kubernetes.io/version is injected per overlay so it tracks the release
+    # instead of drifting here (issue #25).
 spec:
   replicas: 2
   strategy:
@@ -22,7 +23,6 @@ spec:
       labels:
         app.kubernetes.io/name: spring-sse-example
         app.kubernetes.io/component: application
-        app.kubernetes.io/version: "0.0.1-SNAPSHOT"
     spec:
       containers:
       - name: spring-sse-app

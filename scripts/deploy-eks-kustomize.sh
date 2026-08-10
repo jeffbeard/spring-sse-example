@@ -67,14 +67,19 @@ aws eks update-kubeconfig --name $EKS_CLUSTER_NAME
 echo -e "${YELLOW}Verifying cluster connection...${NC}"
 kubectl cluster-info
 
-# Export variables for kustomize
-export DOCKER_REGISTRY
-export DOCKER_USERNAME
-export IMAGE_TAG
+# Build kustomize manifests and apply.
+# The old pipeline piped through envsubst, which only replaced a ${IMAGE_TAG} label -
+# the image itself stayed at whatever the overlay resolved to, so the requested tag was
+# never actually deployed (issue #16). render-manifests.sh overrides the image for real.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+IMAGE_NAME="$DOCKER_USERNAME/spring-sse-example"
+if [ "$DOCKER_REGISTRY" != "docker.io" ]; then
+    IMAGE_NAME="$DOCKER_REGISTRY/$IMAGE_NAME"
+fi
 
-# Build kustomize manifests and apply
 echo -e "${YELLOW}Building and applying Kustomize manifests for $ENVIRONMENT...${NC}"
-kubectl kustomize k8s/overlays/$ENVIRONMENT | envsubst | kubectl apply -f -
+echo "Deploying image: ${IMAGE_NAME}:${IMAGE_TAG}"
+"$SCRIPT_DIR/render-manifests.sh" "$ENVIRONMENT" "$IMAGE_TAG" "$IMAGE_NAME" | kubectl apply -f -
 
 # Wait for deployment to be ready
 echo -e "${YELLOW}Waiting for deployment to be ready...${NC}"

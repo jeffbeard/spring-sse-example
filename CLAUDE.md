@@ -300,4 +300,10 @@ curl http://localhost:8081/actuator/health
 
 # Deploy using Kustomize directly
 kubectl kustomize k8s/overlays/<env> | kubectl apply -f -
+
+# Render with an ad-hoc image tag override (repo files are never modified)
+./scripts/render-manifests.sh <env> <image-tag> [image-name]
+
+# Verify every overlay pins a version-matched, buildable image tag (no cluster needed)
+./scripts/verify-manifests.sh
 ```

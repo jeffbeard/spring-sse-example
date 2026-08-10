@@ -12,6 +12,16 @@ patches:
   - path: deployment-patch.yaml
   - path: configmap-patch.yaml
 
+# Pinned so `kubectl kustomize k8s/overlays/dev` renders a real, buildable image
+# rather than :latest (issue #16). Deploy scripts override the tag for ad-hoc
+# rollouts; scripts/verify-manifests.sh keeps tag and version label in step.
 images:
   - name: spring-sse-example
     newName: jeffbeard/spring-sse-example
+    newTag: "1.0.1"
+
+labels:
+  - pairs:
+      app.kubernetes.io/version: "1.0.1"
+    # Selectors are immutable on an existing Deployment; never add version there.
+    includeSelectors: false

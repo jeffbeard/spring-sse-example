@@ -10,9 +10,6 @@ spec:
       maxUnavailable: 1
       maxSurge: 1
   template:
-    metadata:
-      labels:
-        version: "${IMAGE_TAG}"  # Label for version tracking
     spec:
       containers:
       - name: spring-sse-app
