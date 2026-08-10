@@ -1,0 +1,22 @@
+version: 2
+
+# Actions are pinned by commit SHA in ci.yml; Dependabot understands SHA pins and
+# bumps them (updating the trailing "# v4" comment), so pinning does not mean going
+# stale. The Jib base image is pinned by digest in build.gradle - Dependabot has no
+# ecosystem for that, so refresh it with the command documented next to the pin.
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
