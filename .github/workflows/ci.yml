@@ -129,6 +129,9 @@ jobs:
         echo "Extracted version: $VERSION"
         echo "Image tag: $IMAGE_TAG"
 
+    - name: Verify devtools is absent from the image
+      run: ./gradlew verifyNoDevtoolsInImage
+
     - name: Build and push Docker image
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
