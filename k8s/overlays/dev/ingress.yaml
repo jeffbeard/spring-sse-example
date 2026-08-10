@@ -36,13 +36,9 @@ spec:
             name: spring-sse-service
             port:
               number: 80
-      - path: /actuator
-        pathType: Prefix
-        backend:
-          service:
-            name: spring-sse-service
-            port:
-              number: 8081
+      # No /actuator route: this Ingress is internet-facing and actuator has no
+      # authentication (issue #13). Probes and the ALB health check reach port 8081
+      # in-cluster, which does not require an Ingress path.
       - path: /
         pathType: Prefix
         backend:

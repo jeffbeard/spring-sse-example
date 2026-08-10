@@ -51,14 +51,9 @@ spec:
             name: spring-sse-service
             port:
               number: 80
-  # Separate host for management endpoints (optional)
-  - host: mgmt.your-production-domain.com
-    http:
-      paths:
-      - path: /actuator
-        pathType: Prefix
-        backend:
-          service:
-            name: spring-sse-service
-            port:
-              number: 8081
+  # The management host that used to route /actuator here has been removed (issue #13).
+  # A separate hostname is not a security control: this Ingress is internet-facing and
+  # actuator has no authentication, so the endpoints were reachable by anyone who
+  # guessed the name. Reach actuator in-cluster instead:
+  #   kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-prod
+  # Restoring an external route requires authentication in front of it first.

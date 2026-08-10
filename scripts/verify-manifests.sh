@@ -64,6 +64,35 @@ for overlay in k8s/overlays/*/; do
         fi
     done <<< "$images"
 
+    # Actuator must not be reachable from an internet-facing Ingress (issue #13).
+    # minikube is exempt on purpose: it is local-only and actuator aids debugging.
+    if [ "$env_name" != "minikube" ]; then
+        # Scope to the Ingress document: Deployment probes legitimately use
+        # path: /actuator/health, and the ALB healthcheck-path annotation names it too.
+        # Anchoring on "path:" after leading whitespace excludes the annotation, which
+        # reads "...healthcheck-path: /actuator/health".
+        if echo "$rendered" | awk '
+            /^---$/ { in_ingress = 0 }
+            /^kind: Ingress$/ { in_ingress = 1 }
+            in_ingress && /^[[:space:]]*path:[[:space:]]*\/actuator/ { found = 1 }
+            END { exit !found }
+        '; then
+            echo -e "${RED}[$env_name] Ingress routes /actuator externally${NC}"
+            FAILURES=$((FAILURES + 1))
+        fi
+    fi
+
+    # Keep the actuator surface minimal outside local development (issue #13). health
+    # covers the liveness and readiness probes; metrics and info are not needed and
+    # disclose build and runtime detail.
+    if [ "$env_name" != "minikube" ]; then
+        exposure=$(echo "$rendered" | grep -E "management\.endpoints\.web\.exposure\.include:" | head -1 | sed 's/.*: *//' | tr -d '"')
+        if echo "$exposure" | grep -qE "metrics|info|\*"; then
+            echo -e "${RED}[$env_name] actuator exposure too broad: ${exposure}${NC}"
+            FAILURES=$((FAILURES + 1))
+        fi
+    fi
+
     # Version labels must track the release, not drift from it (issue #25).
     labels=$(echo "$rendered" | grep -E "app\.kubernetes\.io/version:" | awk '{print $2}' | tr -d '"' | sort -u)
     if [ -z "$labels" ]; then
