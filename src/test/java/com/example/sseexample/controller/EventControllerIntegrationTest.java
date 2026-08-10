@@ -1,6 +1,7 @@
 package com.example.sseexample.controller;
 
 import com.example.sseexample.service.EventService;
+import com.example.sseexample.service.SseCapacityExceededException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -60,6 +61,30 @@ class EventControllerIntegrationTest {
         public String getLastEventData() {
             return lastEventData;
         }
+    }
+
+    // Stands in for a service that has hit the app.sse.max-connections cap (issue #15)
+    static class SaturatedEventService extends EventService {
+        public SaturatedEventService() {
+            super(false);
+        }
+
+        @Override
+        public SseEmitter createEventStream() {
+            throw new SseCapacityExceededException(1);
+        }
+    }
+
+    @Test
+    void streamEvents_AtCapacity_ShouldReturn503WithRetryAfter() throws Exception {
+        MockMvc saturated = MockMvcBuilders
+            .standaloneSetup(new EventController(new SaturatedEventService()))
+            .build();
+
+        saturated.perform(get("/api/events")
+                .accept(MediaType.TEXT_EVENT_STREAM_VALUE))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(header().string("Retry-After", "5"));
     }
 
     @Test

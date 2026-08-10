@@ -1,5 +1,6 @@
 package com.example.sseexample.service;
 
+import com.example.sseexample.config.SseProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,17 +39,16 @@ class EventServiceTest {
 
         // Then
         assertNotNull(emitter);
-        assertEquals(0L, emitter.getTimeout());
     }
 
     @Test
-    void createEventStream_ShouldReturnEmitterWithZeroTimeout() {
-        // When
+    void createEventStream_ShouldReturnEmitterWithFiniteTimeout() {
+        // When - infinite timeouts were removed in issue #15; clients reconnect instead
         SseEmitter emitter = eventService.createEventStream();
 
         // Then
         assertNotNull(emitter);
-        assertEquals(0L, emitter.getTimeout());
+        assertEquals(SseProperties.defaults().timeoutMs(), emitter.getTimeout());
     }
 
     @Test
@@ -138,13 +138,16 @@ class EventServiceTest {
         // Given - Create a service with periodic events enabled
         EventService service = new EventService(true);
 
-        // When - Wait a short time for the service to initialize
-        Thread.sleep(100);
+        try {
+            // When - Wait a short time for the service to initialize
+            Thread.sleep(100);
 
-        // Then - Service should be created without errors
-        assertNotNull(service);
-
-        // Cleanup would happen automatically when service goes out of scope
+            // Then - Service should be created without errors
+            assertNotNull(service);
+        } finally {
+            // Issue #26: the scheduler outlives the test unless it is shut down
+            service.shutdown();
+        }
     }
 
     @Test
