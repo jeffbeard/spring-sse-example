@@ -111,7 +111,14 @@ tasks.register('verifyNoDevtoolsInImage') {
 // Jib configuration for Docker image building
 jib {
     from {
-        image = 'eclipse-temurin:17-jre'
+        // Digest-pinned so the base image cannot change under us (issue #18).
+        // The tag is retained for readability; the digest is what is resolved.
+        // Refresh with:
+        //   TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/eclipse-temurin:pull" | jq -r .token)
+        //   curl -sI -H "Authorization: Bearer $TOKEN" \
+        //     -H "Accept: application/vnd.oci.image.index.v1+json" \
+        //     https://registry-1.docker.io/v2/library/eclipse-temurin/manifests/17-jre | grep -i docker-content-digest
+        image = 'eclipse-temurin:17-jre@sha256:e4f018a55645ad204892e44eb35437518d7e108ba2a2dce305024ab371d24876'
     }
     to {
         image = "${System.getenv('DOCKER_REGISTRY') ?: 'docker.io'}/${System.getenv('DOCKER_USERNAME') ?: project.group}/${project.name}:${project.version}"
