@@ -17,8 +17,13 @@ data:
   # Restrict in production overlays. Methods are fixed in CorsConfig.
   app.cors.allowed-origins: "*"
   
-  # SSE configuration
-  spring.mvc.async.request-timeout: "0"
+  # SSE configuration - finite timeouts and a connection cap (issue #15).
+  # Must not be "0": that restores the unbounded-connection DoS.
+  spring.mvc.async.request-timeout: "300000"
+  app.sse.max-connections: "1000"
+  app.sse.timeout-ms: "300000"
+  app.sse.send-timeout-ms: "5000"
+  app.sse.broadcast-threads: "4"
   
   # Logging configuration
   logging.level.com.example: "INFO"
