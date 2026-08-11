@@ -26,8 +26,9 @@ This document provides step-by-step instructions for building, containerizing, a
 export DOCKER_USERNAME=<your-dockerhub-username>
 export DOCKER_TOKEN=<your-personal-access-token>
 
-# Build and push
-./scripts/build-and-push.sh
+# Build and push (Gradle Jib; there is no build-and-push script)
+./gradlew clean build
+DOCKER_USERNAME=<your-dockerhub-username> ./gradlew jib
 ```
 
 ### 4. Deploy to Minikube
@@ -62,11 +63,11 @@ eval $(minikube docker-env)
 
 ### Local Scripts
 
-#### `scripts/build-and-push.sh`
-- Extracts version from `build.gradle`
-- Builds Docker image using Jib
-- Pushes to Docker Hub
-- Requires `DOCKER_USERNAME` and `DOCKER_TOKEN` environment variables
+#### `./gradlew jib`
+- Reads the version from `build.gradle`
+- Builds the image with Jib and pushes it to Docker Hub
+- Requires `DOCKER_USERNAME`, and `DOCKER_TOKEN` unless already logged in
+- Base image is digest-pinned; `./gradlew verifyNoDevtoolsInImage` checks the result
 
 #### `scripts/deploy-minikube-kustomize.sh`
 - Validates Minikube is running
@@ -170,7 +171,7 @@ open http://localhost:8080/test.html
 ### EKS Development Environment
 ```bash
 # Build and push image
-./scripts/build-and-push.sh
+DOCKER_USERNAME=<your-dockerhub-username> ./gradlew jib
 
 # Deploy to EKS dev
 export EKS_CLUSTER_NAME=my-dev-cluster
