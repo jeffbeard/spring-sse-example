@@ -123,7 +123,7 @@ else
     if [ "$ENVIRONMENT" = "dev" ]; then
         echo -e "${YELLOW}To deploy another version to dev:${NC}"
         echo "  1. Update version in build.gradle"
-        echo "  2. Build and push new image: ./scripts/build-and-push.sh"
+        echo "  2. Build and push new image: DOCKER_USERNAME=<user> ./gradlew jib"
         echo "  3. Deploy with new tag: IMAGE_TAG=<new-tag> ./scripts/deploy-eks-kustomize.sh"
     fi
 fi

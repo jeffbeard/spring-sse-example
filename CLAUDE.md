@@ -41,7 +41,7 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 
 **Docker and Container Commands:**
 
-**IMPORTANT: This project uses Gradle Jib for Docker build and push - NOT the build-and-push.sh script.**
+**IMPORTANT: This project uses Gradle Jib for Docker build and push.**
 
 ```bash
 # Complete build and push workflow (PREFERRED METHOD)
@@ -57,9 +57,6 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
 docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.1
-
-# Legacy script (NOT USED in this project)
-# ./scripts/build-and-push.sh
 ```
 
 **Testing SSE Endpoints:**
@@ -192,7 +189,10 @@ The build pipeline provides complete automation from code to deployment:
    - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on main and feature branches)
    
 2. **Local Scripts**:
-   - `scripts/deploy-minikube.sh`: Deploy to local Minikube cluster
+   - `scripts/deploy-minikube-kustomize.sh`: Deploy to local Minikube cluster
+   - `scripts/deploy-eks-kustomize.sh`: Deploy to an EKS environment (`ENVIRONMENT=dev|prod`)
+   - `scripts/render-manifests.sh`: Render an overlay, optionally overriding the image tag
+   - `scripts/verify-manifests.sh` / `scripts/verify-references.sh`: Offline checks, both run in CI
 
 3. **Kubernetes Manifests** (`k8s/`):
    - Production-ready manifests with health checks, resource limits, security contexts
