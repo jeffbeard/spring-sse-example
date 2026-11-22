@@ -4,7 +4,8 @@ import com.example.sseexample.SseExampleApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
@@ -13,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
     classes = SseExampleApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
+@AutoConfigureTestRestTemplate
 class SseIntegrationTest {
 
     @LocalServerPort
@@ -69,7 +72,7 @@ class SseIntegrationTest {
         // Start a thread to connect to the SSE endpoint
         Thread sseClientThread = new Thread(() -> {
             try {
-                URL url = new URL("http://localhost:" + port + "/api/events");
+                URL url = URI.create("http://localhost:" + port + "/api/events").toURL();
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestProperty("Accept", "text/event-stream");
                 connection.setDoInput(true);
@@ -136,7 +139,7 @@ class SseIntegrationTest {
         for (int i = 0; i < clientCount; i++) {
             Thread clientThread = new Thread(() -> {
                 try {
-                    URL url = new URL("http://localhost:" + port + "/api/events");
+                    URL url = URI.create("http://localhost:" + port + "/api/events").toURL();
                     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                     connection.setRequestProperty("Accept", "text/event-stream");
                     connection.setDoInput(true);
@@ -150,7 +153,7 @@ class SseIntegrationTest {
                         boolean receivedEvent = false;
                         
                         while ((line = reader.readLine()) != null) {
-                            System.out.println("[DEBUG_LOG] Client thread " + Thread.currentThread().getId() + " received: " + line);
+                            System.out.println("[DEBUG_LOG] Client thread " + Thread.currentThread().getName() + " received: " + line);
                             
                             // Check for any event after the custom event is triggered
                             if (line.contains("event:custom")) {

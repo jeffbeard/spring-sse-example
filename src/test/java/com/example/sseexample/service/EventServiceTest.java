@@ -190,9 +190,9 @@ class EventServiceTest {
         String json = eventService.buildPayload(message);
 
         // Then it must be valid JSON whose message field equals the original input
-        com.fasterxml.jackson.databind.JsonNode node =
-            new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
-        assertEquals(message, node.get("message").asText());
+        tools.jackson.databind.JsonNode node =
+            new tools.jackson.databind.ObjectMapper().readTree(json);
+        assertEquals(message, node.get("message").asString());
         assertTrue(node.has("timestamp"));
     }
 
@@ -202,8 +202,8 @@ class EventServiceTest {
         String json = eventService.buildPayload(null);
 
         // Then it must still be valid JSON (no injection, no crash)
-        com.fasterxml.jackson.databind.JsonNode node =
-            new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+        tools.jackson.databind.JsonNode node =
+            new tools.jackson.databind.ObjectMapper().readTree(json);
         assertTrue(node.has("message"));
         assertTrue(node.has("timestamp"));
     }
