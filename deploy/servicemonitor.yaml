@@ -1,0 +1,11 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: spring-sse-example
+spec:
+  selector:
+    matchLabels: {app: spring-sse-example}
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
