@@ -24,12 +24,36 @@ dashboard sidecar enabled. The `kube-prometheus-stack` Helm chart provides both.
 
 ## Looking at it
 
-```bash
-# Prometheus: Status > Targets should list serviceMonitor/spring-sse-example/... as UP
-kubectl port-forward -n monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090
+The lab cluster runs on OrbStack, which makes Kubernetes Service DNS names
+resolvable from the Mac itself. Open these straight in a browser, with no
+port-forward:
 
-# Grafana: Dashboards > "Spring SSE Example"
+| What | URL |
+|---|---|
+| Application | http://spring-sse-example.spring-sse-example.svc.cluster.local/ |
+| Grafana | http://monitoring-grafana.monitoring.svc.cluster.local/ |
+| Prometheus | http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/ |
+| Argo CD | https://argocd-server.argocd.svc.cluster.local/applications |
+
+The pattern is `<service>.<namespace>.svc.cluster.local`, plus the Service port
+when it is not 80 or 443. Argo CD serves a self-signed certificate, so the
+browser warns once.
+
+Where to look:
+
+- Prometheus: Status > Targets should list
+  `serviceMonitor/spring-sse-example/...` as UP.
+- Grafana: Dashboards > "Spring SSE Example".
+- Argo CD: the `spring-sse-example` application should be Synced and Healthy.
+
+On a cluster without that host-level DNS (Minikube, kind, EKS), port-forward
+instead:
+
+```bash
+kubectl port-forward -n spring-sse-example svc/spring-sse-example 8080:80
+kubectl port-forward -n monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090
 kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
+kubectl port-forward -n argocd svc/argocd-server 8443:443
 ```
 
 ## Dashboard panels
@@ -39,6 +63,9 @@ ServiceMonitor produces. In the JSON this is the hidden `$job` variable.
 
 | Panel | Query |
 |---|---|
+| Active SSE connections | `sum(sse_connections_active{job="spring-sse-example"})` and `sum(sse_connections_max{job="spring-sse-example"})` |
+| SSE events sent by type | `sum by (event) (rate(sse_events_sent_total{job="spring-sse-example"}[5m]))` |
+| SSE connection churn | `rate(...[5m])` of `sse_connections_opened_total`, `sse_connections_rejected_total` and `sse_connections_dropped_total` |
 | Up | `up{job="spring-sse-example"}` |
 | CPU usage | `process_cpu_usage{job="spring-sse-example"}` |
 | Heap used | `sum by (pod) (jvm_memory_used_bytes{job="spring-sse-example",area="heap"})` |
@@ -54,8 +81,29 @@ Things to know when reading them:
   its duration is the whole life of the connection. Open streams are invisible
   in the request rate, and long ones pull the average latency up.
 - The 5xx panel is empty until the app has returned at least one 5xx.
-- There are no SSE-specific metrics yet (active connections, events sent). See
-  `TODO.md`.
+- The SSE panels are the ones that describe open streams; see the next section.
+
+## SSE metrics
+
+`EventService` registers these with Micrometer. Prometheus names replace dots
+with underscores and add `_total` to counters.
+
+| Metric | Type | Meaning |
+|---|---|---|
+| `sse_connections_active` | gauge | Streams open right now |
+| `sse_connections_max` | gauge | Configured cap (`app.sse.max-connections`) |
+| `sse_connections_opened_total` | counter | Streams admitted |
+| `sse_connections_rejected_total` | counter | Streams refused because the cap was reached |
+| `sse_connections_dropped_total` | counter | Streams removed after a failed or timed-out send |
+| `sse_events_sent_total{event=...}` | counter | Deliveries, one per connection that received the event |
+
+The `event` label takes the event name: `connected`, `heartbeat`, `notification`
+or `custom`. Each distinct value is a separate time series, so it must stay a
+small fixed set and never carry client-supplied text.
+
+A client that disconnects is noticed on the next send to it, so
+`sse_connections_active` can lag a disconnect by up to one notification
+interval (15 seconds).
 
 ## Changing the dashboard
 
