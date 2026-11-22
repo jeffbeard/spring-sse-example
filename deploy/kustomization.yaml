@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Argo CD detects this file and builds deploy/ with Kustomize. No namespace is set
+# here: the Argo CD application's destination supplies it.
+resources:
+  - app.yaml
+  - servicemonitor.yaml
+
+# Each dashboard stays a plain Grafana JSON file, so it can be exported from the
+# Grafana UI and committed as-is. Grafana's dashboard sidecar loads any ConfigMap
+# carrying the grafana_dashboard label, from any namespace.
+configMapGenerator:
+  - name: spring-sse-example-dashboard
+    files:
+      - dashboards/spring-sse-example.json
+    options:
+      # A stable name: nothing mounts this ConfigMap, so a content hash would only
+      # leave Argo CD pruning and recreating it on every edit.
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"

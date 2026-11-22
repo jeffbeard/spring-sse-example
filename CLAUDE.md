@@ -81,6 +81,10 @@ open http://localhost:8080/test.html
 - Static HTML test client available at `/test.html`
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
 
+## Observability
+
+`OBSERVABILITY.md` describes the metrics path in the Argo CD lab. In short: `deploy/` is built with Kustomize (`deploy/kustomization.yaml`), the app exposes `/actuator/prometheus` there only, `deploy/servicemonitor.yaml` configures the scrape, and the Grafana dashboard lives as JSON in `deploy/dashboards/`. Change the dashboard by editing that file, not in the Grafana UI.
+
 ## Supply Chain Pinning
 
 **Dependency updates are reported, never applied automatically.** Dependabot *alerts* are enabled at the repository level and notify by email. Dependabot *version updates* (the `.github/dependabot.yml` that opens upgrade PRs) are deliberately NOT configured — automated upgrade PRs create more work than they save here. Do not add that file back.
