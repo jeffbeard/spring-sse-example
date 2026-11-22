@@ -41,6 +41,60 @@ Argo CD on the local cluster syncs `deploy/` from `main`, so merging to `main` i
 
 See `OBSERVABILITY.md` for the URLs, metrics and dashboard.
 
+#### What this repository provides, and what it expects
+
+Everything specific to this application is in `deploy/` and is applied by Argo CD:
+the Deployment and Service, the ServiceMonitor that configures scraping, and the
+Grafana dashboard.
+
+The cluster and its shared services are not managed here. This repository assumes
+they already exist:
+
+- a Kubernetes cluster (the lab uses OrbStack, which shares the host Docker engine)
+- Argo CD (the lab runs v3.6.2, installed from the upstream manifest)
+- the `kube-prometheus-stack` Helm chart (the lab runs 93.7.0, release `monitoring`
+  in namespace `monitoring`), which supplies Prometheus, the Prometheus Operator
+  CRDs that `ServiceMonitor` needs, and Grafana with the dashboard sidecar
+- one Argo CD `Application` pointing at this repository
+
+Two settings of that chart matter to this repository:
+
+- `prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues: false`, so
+  Prometheus picks up `deploy/servicemonitor.yaml` without a `release` label
+- the Grafana dashboard sidecar watching all namespaces for the label
+  `grafana_dashboard: "1"`, which is the chart default and what the dashboard
+  ConfigMap relies on
+
+That `Application` is the only link between the platform and this repository. It
+is applied once to the cluster and is kept with the lab setup, not here. For
+reference, it looks like this:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spring-sse-example
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeffbeard/spring-sse-example.git
+    targetRevision: main
+    path: deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spring-sse-example
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+Building the cluster and installing those shared services belongs in a separate
+platform project; see `TODO.md`.
+
 ## Pipeline Components
 
 ### GitHub Actions CI/CD
