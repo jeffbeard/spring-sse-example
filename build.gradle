@@ -3,7 +3,7 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
     id 'java'
     id 'jacoco'
-    id 'com.google.cloud.tools.jib' version '3.4.0'
+    id 'com.google.cloud.tools.jib' version '3.5.4'
 }
 
 group = 'com.example'
@@ -70,6 +70,13 @@ jacocoTestCoverageVerification {
     }
 }
 
+// Gradle services are injected rather than reached through Task.project, which is
+// deprecated at execution time and becomes an error in Gradle 10.
+interface ImageVerifyServices {
+    @javax.inject.Inject FileSystemOperations getFs()
+    @javax.inject.Inject ArchiveOperations getArchives()
+}
+
 /**
  * Fails the build if spring-boot-devtools reaches the container image (issue #17).
  * Scans the real image tarball rather than reasoning about the classpath, so it holds
@@ -80,12 +87,18 @@ tasks.register('verifyNoDevtoolsInImage') {
     description = 'Fails if spring-boot-devtools is present in the built container image'
     dependsOn tasks.named('jibBuildTar')
 
+    def services = objects.newInstance(ImageVerifyServices)
+    def imageTarFile = layout.buildDirectory.file('jib-image.tar')
+    def workDirectory = layout.buildDirectory.dir('image-verify')
+
     doLast {
-        def imageTar = layout.buildDirectory.file('jib-image.tar').get().asFile
-        def workDir = layout.buildDirectory.dir('image-verify').get().asFile
-        project.delete(workDir)
-        project.copy {
-            from tarTree(imageTar)
+        def imageTar = imageTarFile.get().asFile
+        def workDir = workDirectory.get().asFile
+        services.fs.delete {
+            delete workDir
+        }
+        services.fs.copy {
+            from services.archives.tarTree(imageTar)
             into workDir
         }
 
@@ -94,7 +107,7 @@ tasks.register('verifyNoDevtoolsInImage') {
         workDir.eachFileRecurse { file ->
             if (file.name.endsWith('.tar.gz')) {
                 layers++
-                tarTree(resources.gzip(file)).visit { entry ->
+                services.archives.tarTree(services.archives.gzip(file)).visit { entry ->
                     if (entry.name.toLowerCase().contains('devtools')) {
                         offenders << entry.path
                     }
@@ -120,7 +133,7 @@ jib {
         //   curl -sI -H "Authorization: Bearer $TOKEN" \
         //     -H "Accept: application/vnd.oci.image.index.v1+json" \
         //     https://registry-1.docker.io/v2/library/eclipse-temurin/manifests/17-jre | grep -i docker-content-digest
-        image = 'eclipse-temurin:17-jre@sha256:e4f018a55645ad204892e44eb35437518d7e108ba2a2dce305024ab371d24876'
+        image = 'eclipse-temurin:17-jre@sha256:541b08fc7f494edf14e436ff6bfb55767e4a115c87bfc547b8c5de957b58737f'
     }
     to {
         image = "${System.getenv('DOCKER_REGISTRY') ?: 'docker.io'}/${System.getenv('DOCKER_USERNAME') ?: project.group}/${project.name}:${project.version}"
