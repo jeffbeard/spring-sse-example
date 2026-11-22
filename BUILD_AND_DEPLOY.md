@@ -7,7 +7,7 @@ This document provides step-by-step instructions for building, containerizing, a
 ### Prerequisites
 - Java 17+
 - Docker Desktop
-- Minikube (for local K8s deployment)
+- A local Kubernetes cluster with Argo CD (for local deployment; the lab uses OrbStack)
 - Docker Hub account (for pushing images)
 
 ### 1. Build and Test
@@ -31,18 +31,15 @@ export DOCKER_TOKEN=<your-personal-access-token>
 DOCKER_USERNAME=<your-dockerhub-username> ./gradlew jib
 ```
 
-### 4. Deploy to Minikube
+### 4. Deploy Locally (Argo CD lab)
+
+Argo CD on the local cluster syncs `deploy/` from `main`, so merging to `main` is the deploy step. The image is built into local Docker and never pushed:
+
 ```bash
-# Start minikube if not running
-minikube start
-
-# Build image in Minikube's Docker (recommended for local dev)
-eval $(minikube docker-env)
 ./gradlew jibDockerBuild
-
-# Deploy application using Kustomize
-./scripts/deploy-minikube-kustomize.sh
 ```
+
+See `OBSERVABILITY.md` for the URLs, metrics and dashboard.
 
 ## Pipeline Components
 
@@ -50,7 +47,7 @@ eval $(minikube docker-env)
 
 **Triggers:**
 - Push to `main` branch (creates production tags)
-- Push to branches matching `feature/docker*` or `feature/minikube*` (creates dev tags)
+- Push to branches matching `feature/docker*` (creates dev tags)
 - Pull requests to `main`
 
 **Jobs:**
@@ -69,13 +66,6 @@ eval $(minikube docker-env)
 - Requires `DOCKER_USERNAME`, and `DOCKER_TOKEN` unless already logged in
 - Base image is digest-pinned; `./gradlew verifyNoDevtoolsInImage` checks the result
 
-#### `scripts/deploy-minikube-kustomize.sh`
-- Validates Minikube is running
-- Deploys using Kustomize overlays in `k8s/overlays/minikube/`
-- Auto-detects Docker credentials
-- Provides connection instructions and port-forward setup
-- Falls back to port-forward if Ingress tunnel unavailable
-
 ### Kubernetes Structure (Kustomize-based)
 
 **Base Manifests (`k8s/base/`):**
@@ -85,7 +75,6 @@ eval $(minikube docker-env)
 - **kustomization.yaml**: Base Kustomize configuration
 
 **Environment Overlays (`k8s/overlays/`):**
-- **minikube/**: Local development patches (1 replica, debug logging)
 - **dev/**: Development environment patches (2 replicas, ALB ingress)
 - **prod/**: Production patches (3 replicas, strict security, monitoring)
 
@@ -127,7 +116,7 @@ docker images | grep spring-sse-example
 
 ### Kubernetes Deployment Issues
 ```bash
-# Check pod status (replace <env> with minikube/dev/prod)
+# Check pod status (replace <env> with dev/prod)
 kubectl get pods -n spring-sse-<env>
 
 # View logs
@@ -151,8 +140,8 @@ kubectl kustomize k8s/overlays/<env>
 Once deployed, test the SSE endpoints:
 
 ```bash
-# Get service URL (Minikube)
-minikube service spring-sse-service -n spring-sse-example --url
+# Local lab: port-forward the Service (or use the direct URLs in OBSERVABILITY.md)
+kubectl port-forward -n spring-sse-example svc/spring-sse-example 8080:80
 
 # Test SSE stream
 curl -N http://localhost:8080/api/events
@@ -186,6 +175,6 @@ ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ```
 
 **Environment Differences:**
-- **Minikube**: 1 replica, debug logging, port-forward access
+- **Local lab** (`deploy/`): 1 replica, plain manifests synced by Argo CD
 - **Dev**: 2 replicas, ALB ingress, multi-version support
 - **Prod**: 3 replicas, strict security, monitoring integration

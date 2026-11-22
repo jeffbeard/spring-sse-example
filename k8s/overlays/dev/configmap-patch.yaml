@@ -10,5 +10,5 @@ data:
   logging.level.com.example: "INFO"
   logging.level.org.springframework.web: "INFO"
 
-  # Dev-specific CORS (can be more restrictive than minikube)
+  # Dev-specific CORS (can be more restrictive than the base)
   app.cors.allowed-origins: "*"  # TODO: Update with actual dev domains

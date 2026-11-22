@@ -195,7 +195,6 @@ The build pipeline provides complete automation from code to deployment:
    - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on main and feature branches)
    
 2. **Local Scripts**:
-   - `scripts/deploy-minikube-kustomize.sh`: Deploy to local Minikube cluster
    - `scripts/deploy-eks-kustomize.sh`: Deploy to an EKS environment (`ENVIRONMENT=dev|prod`)
    - `scripts/render-manifests.sh`: Render an overlay, optionally overriding the image tag
    - `scripts/verify-manifests.sh` / `scripts/verify-references.sh`: Offline checks, both run in CI
@@ -225,7 +224,7 @@ export DOCKER_TOKEN=<your-personal-access-token>
 ### Pipeline Workflows
 
 **Automated CI/CD (GitHub Actions):**
-- Push to `main` or `feature/docker*` or `feature/minikube*` branches triggers Docker build and push
+- Push to `main` or `feature/docker*` branches triggers Docker build and push
 - Uses environment-aware image tagging: semantic version for prod, timestamped for dev
 - Gracefully skips Docker push if credentials not configured
 
@@ -235,9 +234,6 @@ export DOCKER_TOKEN=<your-personal-access-token>
 ./gradlew clean
 ./gradlew build
 DOCKER_USERNAME=jeffbeard ./gradlew jib
-
-# Deploy to Minikube (Kustomize-based)
-./scripts/deploy-minikube-kustomize.sh
 
 # Deploy to EKS dev environment
 ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
@@ -257,21 +253,19 @@ ENVIRONMENT=dev|prod                # Target environment for EKS deployments
 EKS_CLUSTER_NAME=<cluster-name>     # EKS cluster name for deployments
 ```
 
-**Minikube Deployment:**
-```bash
-# Start minikube
-minikube start
+**Local Lab (Argo CD):**
 
-# Build image directly in minikube Docker (no push needed)
-eval $(minikube docker-env)
+Local deployment is the Argo CD lab, not a script. Argo CD on the local OrbStack cluster syncs `deploy/` from `main` into the `spring-sse-example` namespace. The cluster shares the host Docker engine, so a local image build is enough:
+
+```bash
+# Build the image the lab manifest references (spring-sse-example:<version>)
 ./gradlew jibDockerBuild
 
-# Deploy to minikube using Kustomize
-./scripts/deploy-minikube-kustomize.sh
-
-# Access via port-forward
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-minikube
+# Same tag rebuilt? Argo CD sees no git change, so restart the pod by hand
+kubectl rollout restart deployment/spring-sse-example -n spring-sse-example
 ```
+
+The Minikube overlay and its deploy script were removed. `k8s/` now holds only the EKS `dev` and `prod` overlays, which have never been deployed.
 
 **EKS Deployment:**
 ```bash
@@ -290,19 +284,19 @@ ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ```
 
 **Kubernetes Resources (Kustomize-based):**
-- **Namespaces**: Environment-specific (`spring-sse-minikube`, `spring-sse-dev`, `spring-sse-prod`)
+- **Namespaces**: Environment-specific (`spring-sse-dev`, `spring-sse-prod`)
 - **Base Manifests**: `k8s/base/` (deployment, service, configmap)
-- **Environment Overlays**: `k8s/overlays/{minikube,dev,prod}/` with specific patches
-- **Deployment**: 1 replica (Minikube), 2 replicas (dev), 3 replicas (prod)
+- **Environment Overlays**: `k8s/overlays/{dev,prod}/` with specific patches
+- **Deployment**: 2 replicas (dev), 3 replicas (prod)
 - **Service**: ClusterIP with Ingress for external access
 - **ConfigMap**: Environment-specific configuration patches
-- **Resource Limits**: Optimized per environment (256Mi/250m for Minikube, 512Mi/500m for dev, 1Gi/1000m for prod)
+- **Resource Limits**: Optimized per environment (512Mi/500m for dev, 1Gi/1000m for prod)
 - **Health Checks**: Liveness and readiness probes on management port 8081
 - **Security**: Non-root user (1001), read-only filesystem, dropped capabilities
 
 **Monitoring and Troubleshooting:**
 ```bash
-# Check pod status (replace <env> with minikube/dev/prod)
+# Check pod status (replace <env> with dev/prod)
 kubectl get pods -n spring-sse-<env>
 
 # View logs

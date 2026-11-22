@@ -10,39 +10,6 @@ deploys to AWS, on EKS or ECS. The platform itself (Terraform and related
 infrastructure code) will probably live in a separate project. The
 infrastructure architecture is not decided yet.
 
-## Now: remove the Minikube setup
-
-The Argo CD lab (`deploy/`, synced from `main` to the local OrbStack cluster)
-replaces it. Do this as one `chore:` PR.
-
-Delete:
-
-- [ ] `k8s/overlays/minikube/` (5 files)
-- [ ] `scripts/deploy-minikube-kustomize.sh`
-
-Edit:
-
-- [ ] `.github/workflows/ci.yml`: drop `feature/minikube*` from the image-push
-      branch condition on the `docker` job
-- [ ] `scripts/verify-manifests.sh`: remove the two `minikube` exemptions in
-      the actuator exposure checks
-- [ ] `k8s/base/configmap.yaml` and `k8s/overlays/dev/configmap-patch.yaml`:
-      comments that mention minikube
-
-Docs:
-
-- [ ] `CLAUDE.md`
-- [ ] `BUILD_AND_DEPLOY.md`
-- [ ] `KUBERNETES_DEPLOYMENT.md`
-- [ ] `FUTURE_IMPROVEMENTS.md`
-- [ ] This file: remove this section. `scripts/verify-references.sh` scans the
-      root `*.md` files and fails on a path to a deleted script.
-
-Check afterwards:
-
-- [ ] `scripts/verify-manifests.sh` and `scripts/verify-references.sh` pass
-- [ ] `grep -ri minikube .` returns nothing unexpected
-
 ## Next: decide what happens to `k8s/`
 
 Two manifest sets now exist side by side:
@@ -51,7 +18,7 @@ Two manifest sets now exist side by side:
 - `k8s/base` plus the `dev` and `prod` overlays: Kustomize, with the ConfigMap,
   management port 8081, security context, resource limits and Ingress
 
-Once Minikube is gone, nothing local exercises the `k8s/` stack. It is covered
+With the Minikube overlay removed, nothing local exercises the `k8s/` stack. It is covered
 only by the CI render checks, and the EKS overlays have never been deployed.
 
 - [ ] Choose one: point Argo CD at a Kustomize overlay, fold the useful parts
