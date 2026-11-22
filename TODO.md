@@ -76,9 +76,8 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       "Spring SSE Example" one shows up, or export it over
       `deploy/dashboards/spring-sse-example.json` if its layout is better
       (see `OBSERVABILITY.md`)
-- [ ] Add SSE-specific metrics in `EventService` (active connections gauge,
-      events-sent counter) and panels for them. The dashboard currently shows
-      only generic JVM and HTTP metrics.
+- [x] Add SSE-specific metrics in `EventService` (active connections gauge,
+      events-sent counter) and panels for them (2026-11-22)
 - [ ] Add a CI step that renders `deploy/` with `kubectl kustomize` and checks
       the dashboard JSON parses. Nothing validates `deploy/` in CI today.
 

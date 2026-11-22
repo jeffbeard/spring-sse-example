@@ -18,10 +18,10 @@ patches:
 images:
   - name: spring-sse-example
     newName: jeffbeard/spring-sse-example
-    newTag: "1.1.0"
+    newTag: "1.2.0"
 
 labels:
   - pairs:
-      app.kubernetes.io/version: "1.1.0"
+      app.kubernetes.io/version: "1.2.0"
     # Selectors are immutable on an existing Deployment; never add version there.
     includeSelectors: false

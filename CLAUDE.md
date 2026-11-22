@@ -56,7 +56,7 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 ./gradlew verifyNoDevtoolsInImage
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
-docker run -p 8080:8080 jeffbeard/spring-sse-example:1.1.0
+docker run -p 8080:8080 jeffbeard/spring-sse-example:1.2.0
 ```
 
 **Testing SSE Endpoints:**
@@ -84,6 +84,8 @@ open http://localhost:8080/test.html
 ## Observability
 
 `OBSERVABILITY.md` describes the metrics path in the Argo CD lab. In short: `deploy/` is built with Kustomize (`deploy/kustomization.yaml`), the app exposes `/actuator/prometheus` there only, `deploy/servicemonitor.yaml` configures the scrape, and the Grafana dashboard lives as JSON in `deploy/dashboards/`. Change the dashboard by editing that file, not in the Grafana UI.
+
+The lab cluster is OrbStack, so Service DNS names open directly in a browser on the Mac (for example `http://monitoring-grafana.monitoring.svc.cluster.local/`); `OBSERVABILITY.md` lists the URLs. `EventService` exports the `sse_*` metrics documented there.
 
 ## Supply Chain Pinning
 
