@@ -12,7 +12,7 @@ data:
   management.endpoint.health.enabled: "true"
   # health only: it covers the liveness and readiness probes. metrics and info are
   # unused here and disclose build/runtime detail on an unauthenticated port (issue #13).
-  # Local debugging can widen this in the minikube overlay.
+  # The Argo CD lab (deploy/) is separate and exposes prometheus as well.
   management.endpoints.web.exposure.include: "health"
   # The readinessProbe targets /actuator/health/readiness, which only exists when the
   # health probe groups are enabled. Spring auto-enables them when it detects

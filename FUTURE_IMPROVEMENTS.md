@@ -5,7 +5,7 @@ This document contains recommendations and questions to address for improving th
 ## High Priority Tasks
 
 ### 1. ArgoCD Integration for GitOps
-- [ ] Install ArgoCD in Minikube for local testing
+- [x] Install ArgoCD on a local cluster for testing (done on OrbStack; Minikube setup removed)
 - [ ] Set up ArgoCD in EKS clusters (dev and prod)
 - [ ] Create ArgoCD Application manifests for each environment
 - [ ] Configure automatic sync for dev, manual for prod
@@ -51,7 +51,7 @@ This document contains recommendations and questions to address for improving th
 
 ### Infrastructure & Architecture
 1. **Ingress Controller Strategy**
-   - Currently using nginx for Minikube and ALB for EKS
+   - Currently using ALB for EKS
    - Question: Should we standardize on one approach?
    - Consider: nginx ingress controller on EKS vs native ALB
 
@@ -67,7 +67,7 @@ This document contains recommendations and questions to address for improving th
 
 ### Security & Compliance
 4. **CORS Configuration**
-   - Currently allows `*` in dev/minikube
+   - Currently allows `*` in dev
    - TODO: Define actual allowed origins for each environment
    - Implement proper CORS headers for production
 
@@ -106,7 +106,7 @@ This document contains recommendations and questions to address for improving th
 ## Implementation Priority
 
 ### Phase 1 (Immediate)
-1. ArgoCD setup and testing in Minikube
+1. ArgoCD setup and testing on a local cluster
 2. Secrets management solution
 3. CORS configuration for production
 
@@ -127,7 +127,7 @@ This document contains recommendations and questions to address for improving th
 
 ## Notes
 
-- Each task should be implemented and tested in Minikube first
+- Each task should be implemented and tested in the local Argo CD lab first
 - Document all changes in KUBERNETES_DEPLOYMENT.md
 - Update CLAUDE.md with new commands and workflows
 - Consider creating runbooks for common operations

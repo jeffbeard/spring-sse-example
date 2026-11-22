@@ -46,7 +46,7 @@ Where to look:
 - Grafana: Dashboards > "Spring SSE Example".
 - Argo CD: the `spring-sse-example` application should be Synced and Healthy.
 
-On a cluster without that host-level DNS (Minikube, kind, EKS), port-forward
+On a cluster without that host-level DNS (kind, EKS), port-forward
 instead:
 
 ```bash

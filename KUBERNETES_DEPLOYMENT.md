@@ -18,15 +18,9 @@ The application can be deployed using two main approaches:
 
 ## Deployment Scripts (Kustomize-based)
 
-### Minikube Development
-```bash
-./scripts/deploy-minikube-kustomize.sh
-```
-- Deploys using Kustomize overlays (`k8s/overlays/minikube/`)
-- Namespace: `spring-sse-minikube`
-- 1 replica with debug logging
-- Auto-detects Docker credentials
-- Falls back to port-forwarding if Ingress tunnel unavailable
+### Local Development
+There is no local deploy script. Local deployment is the Argo CD lab, which syncs
+`deploy/` from `main`; see `OBSERVABILITY.md`. The Kustomize overlays below are for EKS.
 
 ### EKS Development Environment
 ```bash
@@ -51,7 +45,6 @@ ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ### 1. Ingress Access (Production)
 **Prerequisites**: 
 - Ingress controller installed
-- For Minikube: `sudo minikube tunnel` running
 
 **URLs**:
 - Application: `http://<INGRESS_IP>/api/events`
@@ -61,7 +54,7 @@ ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
 ### 2. Port-Forward Access (Development)
 **Commands**:
 ```bash
-# Replace <env> with minikube/dev/prod
+# Replace <env> with dev/prod
 kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env> &
 kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env> &
 ```
@@ -95,7 +88,6 @@ annotations:
 
 ### Multi-Environment Support
 Each environment has specific configurations:
-- **Minikube**: nginx ingress with local access
 - **Dev**: ALB ingress with sticky sessions for testing multiple versions
 - **Production**: ALB ingress with SSL/TLS, custom domains, and WAF integration
 
@@ -111,7 +103,7 @@ Each environment has specific configurations:
 
 ### Status Commands
 ```bash
-# Check deployment status (replace <env> with minikube/dev/prod)
+# Check deployment status (replace <env> with dev/prod)
 kubectl get pods -n spring-sse-<env>
 
 # View logs
@@ -131,8 +123,6 @@ kubectl kustomize k8s/overlays/<env>
 
 1. **Ingress Not Accessible**: 
    - Ensure ingress controller is running
-   - For Minikube: Run `sudo minikube tunnel`
-   - Check ingress addon: `minikube addons list | grep ingress`
 
 2. **Pod Not Starting**:
    - Check image pull: `kubectl describe pod -n spring-sse-<env>`
@@ -203,7 +193,7 @@ logging.level.com.example: "INFO"
 ## Resources
 
 - **Base manifests**: `k8s/base/` (deployment, service, configmap)
-- **Environment overlays**: `k8s/overlays/{minikube,dev,prod}/`
+- **Environment overlays**: `k8s/overlays/{dev,prod}/`
 - **Deployment scripts**: `scripts/deploy-*-kustomize.sh`
 - **Configuration**: Environment-specific patches in overlays
 - **Monitoring**: `/actuator/health`, `/actuator/metrics` (port 8081)
@@ -212,7 +202,6 @@ logging.level.com.example: "INFO"
 
 ```bash
 # Build manifests for specific environment
-kubectl kustomize k8s/overlays/minikube
 kubectl kustomize k8s/overlays/dev
 kubectl kustomize k8s/overlays/prod
 
