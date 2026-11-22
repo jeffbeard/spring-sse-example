@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-sse-example
+  labels: {app: spring-sse-example}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: spring-sse-example}
+  template:
+    metadata:
+      labels: {app: spring-sse-example}
+    spec:
+      containers:
+        - name: spring-sse-example
+          image: spring-sse-example:1.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-sse-example
+  labels: {app: spring-sse-example}
+spec:
+  selector: {app: spring-sse-example}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+
