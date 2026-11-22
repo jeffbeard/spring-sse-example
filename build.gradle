@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.example'
-version = '1.0.1'
+version = '1.0.2'
 
 java {
     sourceCompatibility = '17'
@@ -138,7 +138,13 @@ jib {
         image = 'eclipse-temurin:17-jre@sha256:541b08fc7f494edf14e436ff6bfb55767e4a115c87bfc547b8c5de957b58737f'
     }
     to {
-        image = "${System.getenv('DOCKER_REGISTRY') ?: 'docker.io'}/${System.getenv('DOCKER_USERNAME') ?: project.group}/${project.name}:${project.version}"
+        // With DOCKER_USERNAME: <registry>/<username>/<name>:<version>, for pushing.
+        // Without it: a bare <name>:<version>, the name deploy/app.yaml expects from
+        // a local `./gradlew jibDockerBuild`. The Maven group is never part of the name.
+        def dockerUsername = System.getenv('DOCKER_USERNAME')
+        image = dockerUsername
+            ? "${System.getenv('DOCKER_REGISTRY') ?: 'docker.io'}/${dockerUsername}/${project.name}:${project.version}"
+            : "${project.name}:${project.version}"
         // Configure auth for Docker Hub using personal access token
         if (System.getenv('DOCKER_USERNAME') != null && System.getenv('DOCKER_TOKEN') != null) {
             auth {

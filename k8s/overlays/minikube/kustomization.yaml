@@ -12,15 +12,15 @@ patches:
   - path: deployment-patch.yaml
   - path: configmap-patch.yaml
 
-# 1.0.0 was never built - build.gradle has been at 1.0.1, so a bare
-# `kubectl apply -k` deployed a nonexistent image (issue #16).
+# The tag must match the version in build.gradle: a tag that was never built
+# makes a bare `kubectl apply -k` deploy a nonexistent image (issue #16).
 images:
   - name: spring-sse-example
     newName: jeffbeard/spring-sse-example
-    newTag: "1.0.1"
+    newTag: "1.0.2"
 
 labels:
   - pairs:
-      app.kubernetes.io/version: "1.0.1"
+      app.kubernetes.io/version: "1.0.2"
     # Selectors are immutable on an existing Deployment; never add version there.
     includeSelectors: false
