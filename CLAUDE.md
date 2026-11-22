@@ -56,7 +56,7 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 ./gradlew verifyNoDevtoolsInImage
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
-docker run -p 8080:8080 jeffbeard/spring-sse-example:1.0.2
+docker run -p 8080:8080 jeffbeard/spring-sse-example:1.1.0
 ```
 
 **Testing SSE Endpoints:**
