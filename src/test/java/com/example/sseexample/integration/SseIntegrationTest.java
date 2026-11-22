@@ -4,11 +4,10 @@ import com.example.sseexample.SseExampleApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.*;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.client.RestTestClient;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -27,33 +26,28 @@ import static org.junit.jupiter.api.Assertions.*;
     classes = SseExampleApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@AutoConfigureTestRestTemplate
+@AutoConfigureRestTestClient
 class SseIntegrationTest {
 
     @LocalServerPort
     private int port;
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    private RestTestClient restTestClient;
 
     @Test
     void triggerEvent_ShouldReturnSuccessResponse() {
         // Given
         String message = "Integration test message";
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<String> request = new HttpEntity<>("\"" + message + "\"", headers);
 
-        // When
-        ResponseEntity<String> response = restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/trigger-event",
-            request,
-            String.class
-        );
-
-        // Then
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals("Event triggered", response.getBody());
+        // When / Then
+        restTestClient.post()
+            .uri("/api/trigger-event")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body("\"" + message + "\"")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class).isEqualTo("Event triggered");
     }
 
     @Test
