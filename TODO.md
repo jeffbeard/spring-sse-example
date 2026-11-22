@@ -61,14 +61,14 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       - load balancer behaviour with SSE (idle timeouts, connection draining)
 - [ ] Decide EKS or ECS
 - [ ] Sketch the infrastructure architecture
-- [ ] Create the separate platform project (working name `k8s-lab-infra`,
-      from `~/projects/k8s-lab`). Scope:
+- [ ] Build out the separate platform project, `~/projects/k8s-lab-infra`
+      (renamed from `k8s-lab` on 2026-11-22). Scope:
       - build a cluster: first the OrbStack lab, so it can be torn down and
         rebuilt at will; AWS or another target later
       - bootstrap the default services on it (Argo CD, Prometheus, Grafana)
       - do both repeatably across environments
 
-      What `~/projects/k8s-lab` holds today (inventory taken 2026-11-22):
+      What `~/projects/k8s-lab-infra` held when inventoried on 2026-11-22:
       - a walkthrough document, written as a generic template around a
         placeholder app, not a record of what was run
       - `monitoring-values.yaml`: Helm values for `kube-prometheus-stack`
@@ -93,7 +93,7 @@ only by the CI render checks, and the EKS overlays have never been deployed.
         cluster is deleted
       - rename `myapp-application.yaml` and retire the placeholder app steps
 - [ ] Decide where the Argo CD `Application` for this repository should live.
-      Today it is a loose file in `~/projects/k8s-lab` (a copy is shown in
+      Today it is a loose file in `~/projects/k8s-lab-infra` (a copy is shown in
       `BUILD_AND_DEPLOY.md`). The usual home is the platform project, as one
       entry in an app-of-apps or ApplicationSet.
 - [ ] Rebuild dependency on this repository: the lab pod fails to pull unless
