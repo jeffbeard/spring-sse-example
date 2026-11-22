@@ -38,6 +38,9 @@ if (buildingImage) {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // Adds /actuator/prometheus. Not exposed unless management.endpoints.web.exposure.include
+    // lists it; only deploy/app.yaml (the local Argo CD lab) does. The k8s/ overlays stay health-only (issue #13).
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-resttestclient'

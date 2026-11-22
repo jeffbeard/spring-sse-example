@@ -18,6 +18,25 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          env:
+            # Local lab only: this Service is not exposed outside the cluster.
+            # The k8s/ overlays deliberately expose health alone (issue #13).
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: health,prometheus
+          # No management.server.port here, so actuator shares port 8080.
+          # The liveness/readiness groups are auto-enabled when Spring detects Kubernetes.
+          startupProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 5
+            failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
