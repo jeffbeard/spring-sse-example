@@ -13,9 +13,9 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 - Custom events can be triggered via POST `/api/trigger-event`
 
 **Connection Management:**
-- Each SSE connection gets an `SseEmitter` with infinite timeout (0L)
-- Automatic cleanup on connection completion, timeout, or error
-- Concurrent connection support with thread-safe operations
+- Global connection cap (`app.sse.max-connections`, default 1000) and finite emitter timeout (`app.sse.timeout-ms`, default 300000ms)
+- Automatic cleanup on connection completion, timeout, error, or shutdown
+- Concurrent connection support with thread-safe operations and bounded broadcast pool
 
 ## Project Structure
 
@@ -47,7 +47,7 @@ When working with this project, Junie should:
 - Run tests to verify changes using `./gradlew test`
 - Ensure all tests pass before submitting changes
 - Maintain test coverage of at least 50% (JaCoCo threshold)
-- Consider the testing strategy outlined in CLAUDE.md
+- Consider the full project and testing guidelines in `AGENTS.md`
 
 ### Branch and Commit Conventions
 
@@ -87,7 +87,7 @@ When working with this project, Junie should:
 - CORS configured for all origins (development only)
 - Static HTML test client available at `/test.html`
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
-- Uses `@CrossOrigin(origins = "*")` for development - restrict in production
+- Uses `CorsConfig` (`app.cors.allowed-origins`) for development - restrict in production
 - SSE connection lifecycle managed with completion/timeout/error callbacks
 - Background `ScheduledExecutorService` generates periodic events
 - Event data formatted as JSON with message and timestamp fields

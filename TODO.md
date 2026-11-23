@@ -21,10 +21,11 @@ Two manifest sets now exist side by side:
 With the Minikube overlay removed, nothing local exercises the `k8s/` stack. It is covered
 only by the CI render checks, and the EKS overlays have never been deployed.
 
-- [ ] Choose one: point Argo CD at a Kustomize overlay, fold the useful parts
-      of `k8s/` into `deploy/`, or drop `k8s/` until the AWS target is chosen
+- [x] Decided 2026-11-22: leave `k8s/` as it is for now and collapse all
+      deployment configuration into one tree, unless doing so turns up a good
+      reason not to (issue #61)
 - [ ] Carry over whatever hardening is worth keeping (non-root user, read-only
-      filesystem, resource limits, separate management port)
+      filesystem, resource limits, separate management port) (issue #63)
 - [ ] Reconcile `FUTURE_IMPROVEMENTS.md` with this file. Its first item, Argo CD
       integration, is now partly done.
 
@@ -38,7 +39,7 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       `kubectl rollout restart`. Work out a better image flow (registry, unique
       tags, image updater).
 - [ ] Remove stale local images: `com.example/spring-sse-example:1.0.1` and
-      `spring-sse-example:1.0.1`
+      `spring-sse-example:1.0.1` (issue #72)
 - [ ] Delete the hand-built Grafana dashboard once the provisioned
       "Spring SSE Example" one shows up, or export it over
       `deploy/dashboards/spring-sse-example.json` if its layout is better
@@ -47,6 +48,7 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       events-sent counter) and panels for them (2026-11-22)
 - [ ] Add a CI step that renders `deploy/` with `kubectl kustomize` and checks
       the dashboard JSON parses. Nothing validates `deploy/` in CI today.
+      (issue #62)
 
 ## Later: AWS pipeline
 
