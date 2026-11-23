@@ -10,24 +10,18 @@ deploys to AWS, on EKS or ECS. The platform itself (Terraform and related
 infrastructure code) will probably live in a separate project. The
 infrastructure architecture is not decided yet.
 
-## Next: decide what happens to `k8s/`
+## Deployment configuration
 
-Two manifest sets now exist side by side:
+`deploy/` is the only manifest set: what Argo CD deploys to the lab. The EKS
+overlays in `k8s/` were never deployed and were removed on 2026-11-22, with
+their deploy scripts and `KUBERNETES_DEPLOYMENT.md`. Configuration for an AWS
+target gets built in `deploy/` and the platform project once that target is
+chosen, and tested as it is built.
 
-- `deploy/`: plain manifests, what Argo CD actually deploys
-- `k8s/base` plus the `dev` and `prod` overlays: Kustomize, with the ConfigMap,
-  management port 8081, security context, resource limits and Ingress
-
-With the Minikube overlay removed, nothing local exercises the `k8s/` stack. It is covered
-only by the CI render checks, and the EKS overlays have never been deployed.
-
-- [x] Decided 2026-11-22: leave `k8s/` as it is for now and collapse all
-      deployment configuration into one tree, unless doing so turns up a good
-      reason not to (issue #61)
-- [ ] Carry over whatever hardening is worth keeping (non-root user, read-only
-      filesystem, resource limits, separate management port) (issue #63)
-- [ ] Reconcile `FUTURE_IMPROVEMENTS.md` with this file. Its first item, Argo CD
-      integration, is now partly done.
+- [ ] Harden `deploy/app.yaml`: non-root user, read-only filesystem, resource
+      limits (issue #63)
+- [ ] Reconcile `FUTURE_IMPROVEMENTS.md` with this file and the GitHub issues.
+      Much of it is now tracked as issues or done.
 
 ## Argo CD lab follow-ups
 
@@ -46,9 +40,9 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       (see `OBSERVABILITY.md`)
 - [x] Add SSE-specific metrics in `EventService` (active connections gauge,
       events-sent counter) and panels for them (2026-11-22)
-- [ ] Add a CI step that renders `deploy/` with `kubectl kustomize` and checks
-      the dashboard JSON parses. Nothing validates `deploy/` in CI today.
-      (issue #62)
+- [x] CI renders `deploy/` with `kubectl kustomize` and checks the image tag
+      and the dashboard JSON (`scripts/verify-manifests.sh`, issue #62,
+      2026-11-22)
 
 ## Later: AWS pipeline
 
@@ -102,4 +96,6 @@ only by the CI render checks, and the EKS overlays have never been deployed.
       `./gradlew jibDockerBuild` has produced the tag in `deploy/app.yaml`
       before Argo CD syncs. Either document that as a bootstrap step in the
       platform project or move the lab to a registry.
-- [ ] Revisit the parked AWS-gated issues: #13 (ingress half), #14, #23, #24
+- [ ] AWS-gated issues #14, #19, #23 and #24 were closed with the removal of
+      `k8s/`; their subjects (TLS, NetworkPolicy, ALB health checks, stickiness)
+      come back as design input when the AWS target is built

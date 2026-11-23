@@ -47,7 +47,7 @@ Broadcasts a custom event to all connected SSE clients.
 ```
 GET /actuator/health
 ```
-Returns application health status (available on management port 8081).
+Returns application health status. Actuator shares the application port, 8080.
 
 ## Event Types
 
