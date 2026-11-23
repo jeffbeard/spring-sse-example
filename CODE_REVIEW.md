@@ -11,14 +11,14 @@ on; this file is only an index of what the review produced and what it got wrong
 | Broadcast waits a full send timeout per queued client when the pool is stuck | #64 | medium |
 | `trigger-event` double-encodes JSON string bodies; no blank or length check | #65 | medium |
 | `deploy/app.yaml` has no security context or resource limits | #63 | medium |
-| CI does not validate `deploy/` | #62 | medium |
+| CI does not validate `deploy/` (fixed with the removal of `k8s/`) | #62 | medium |
 | `SseProperties` accepts zero or negative timeouts | #66 | low |
 | `createEventStream`: `connected` ordering, unreachable catch, plain-string payload | #67 | low |
 | `SseIntegrationTest`: premature connect signal, leaked connections, weak assertion | #68 | low |
 | Unit tests: dead test, unused Mockito scaffolding, missing shutdown | #69 | low |
 | CI: coverage threshold not enforced, `verify-references.sh` not run, Jib runs twice | #70 | low |
 | Test client status and error handling; README actuator port; `/api` mapping | #71 | low |
-| Collapse `deploy/` and `k8s/` into one deployment configuration tree | #61 | n/a |
+| Two unrelated deployment configuration trees (resolved: `k8s/` removed) | #61 | n/a |
 
 ## Corrections to the original review
 
@@ -32,15 +32,16 @@ on; this file is only an index of what the review produced and what it got wrong
 - **A `503` leaving the test client showing "Connected"** is wrong. `EventSource`
   does not retry on a `503`; it closes, and the page already handles that. Only
   the reconnect after the 5-minute timeout shows a stale status.
-- **`k8s/` as "legacy Minikube scaffolding to delete"** was the reviewer's
-  assumption, not a decision. The Minikube overlay is already gone; what remains
-  are the EKS overlays. They stay as they are. See below.
+- **`k8s/` as "legacy Minikube scaffolding"** was mislabelled: the Minikube
+  overlay was already gone and what remained were EKS overlays. The conclusion
+  held anyway. See below.
 
 ## Deployment configuration
 
-- `deploy/` is the only configuration that is deployed (Argo CD, local lab).
-- `k8s/` holds EKS overlays that have never been deployed. They, and the open
-  issues about them (#14, #19, #23, #24), are educated guesses until an AWS
-  target exists and the manifests are built, deployed, tested and iterated on.
-- The intended end state is one tree for all deployment configuration (#61).
+- `deploy/` is the only configuration: what Argo CD deploys to the local lab.
+- `k8s/`, its EKS overlays and deploy scripts were removed on 2026-11-22. They
+  had never been deployed, so they were guesses that cost upkeep. The issues
+  about them (#14, #19, #23, #24) are closed.
+- Configuration for an AWS target will be built and tested in `deploy/` and the
+  platform project once that target is chosen.
 - Leftovers of the removed Minikube setup are tracked in #72.

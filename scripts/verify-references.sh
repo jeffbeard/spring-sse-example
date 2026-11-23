@@ -1,10 +1,9 @@
 #!/bin/bash
 # Fails when a script or document points at a repository file that does not exist.
 #
-# Three deploy scripts applied flat manifests under k8s/ that were deleted in the move
-# to Kustomize, so each aborted on its first kubectl apply, and the docs advertised a
-# build script that had also been removed (issue #27). Nothing caught it because the
-# only way to find out was to run the script.
+# Scripts and docs have pointed at manifests and scripts that had been deleted
+# (issue #27). Nothing caught it because the only way to find out was to run the
+# script or follow the doc.
 
 set -euo pipefail
 
@@ -18,16 +17,11 @@ cd "$REPO_ROOT"
 FAILURES=0
 
 # Referenced paths worth checking: repo-relative manifests and scripts.
-PATTERN='(\./)?(k8s/[A-Za-z0-9_./-]+\.ya?ml|scripts/[A-Za-z0-9_.-]+\.sh)'
+PATTERN='(\./)?(deploy/[A-Za-z0-9_./-]+\.(ya?ml|json)|scripts/[A-Za-z0-9_.-]+\.sh)'
 
 targets=$(find scripts -name '*.sh' -type f; find . -maxdepth 1 -name '*.md' -type f)
 
 for target in $targets; do
-    # Skip this script: its own comments name the historical paths.
-    if [ "$(basename "$target")" = "verify-references.sh" ]; then
-        continue
-    fi
-
     while IFS= read -r match; do
         line_no="${match%%:*}"
         ref="${match#*:}"

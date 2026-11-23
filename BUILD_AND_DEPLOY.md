@@ -106,7 +106,9 @@ platform project; see `TODO.md`.
 
 **Jobs:**
 1. **test**: Runs tests and generates coverage reports
-2. **docker**: Builds and pushes Docker images (only on qualifying branches)
+2. **manifests**: Runs `scripts/verify-manifests.sh` against `deploy/`
+3. **image**: Builds the image as a tarball, checks devtools is absent, scans with Trivy
+4. **docker**: Builds and pushes Docker images (only on qualifying branches)
 
 **Required Secrets:**
 - `DOCKER_USERNAME`: Docker Hub username
@@ -120,17 +122,14 @@ platform project; see `TODO.md`.
 - Requires `DOCKER_USERNAME`, and `DOCKER_TOKEN` unless already logged in
 - Base image is digest-pinned; `./gradlew verifyNoDevtoolsInImage` checks the result
 
-### Kubernetes Structure (Kustomize-based)
+### Kubernetes Manifests
 
-**Base Manifests (`k8s/base/`):**
-- **deployment.yaml**: Application deployment with health checks
-- **service.yaml**: ClusterIP service for internal access
-- **configmap.yaml**: Base application configuration
-- **kustomization.yaml**: Base Kustomize configuration
+`deploy/` is the only manifest set, built with Kustomize:
 
-**Environment Overlays (`k8s/overlays/`):**
-- **dev/**: Development environment patches (2 replicas, ALB ingress)
-- **prod/**: Production patches (3 replicas, strict security, monitoring)
+- **app.yaml**: Deployment (with startup, liveness and readiness probes) and Service
+- **servicemonitor.yaml**: Prometheus scrape configuration
+- **dashboards/**: Grafana dashboard JSON, packaged as a ConfigMap
+- **kustomization.yaml**: ties them together
 
 ## Version Management
 
@@ -142,20 +141,17 @@ version = '1.0.0'
 Image tagging strategy:
 - **Production (main branch)**: Clean semantic version (e.g., `1.0.0`)
 - **Development (feature branches)**: Timestamped versions (e.g., `1.0.0-dev-abc1234`)
-- **Kubernetes labels**: Environment-specific versioning for tracking deployments
 
 ## Security Features
 
 ### Container Security
-- Non-root user (uid 1001)
-- Read-only root filesystem
-- Dropped capabilities
-- Resource limits and requests
+- Non-root user (uid 1001), set in the image by Jib
+- Digest-pinned base image, scanned with Trivy in CI
+- Pod security context and resource limits are not set yet (issue #63)
 
 ### Health Checks
-- Liveness probe on `/actuator/health`
+- Startup and liveness probes on `/actuator/health/liveness`
 - Readiness probe on `/actuator/health/readiness`
-- Startup delays and retry logic
 
 ## Troubleshooting
 
@@ -170,18 +166,18 @@ docker images | grep spring-sse-example
 
 ### Kubernetes Deployment Issues
 ```bash
-# Check pod status (replace <env> with dev/prod)
-kubectl get pods -n spring-sse-<env>
+# Check pod status
+kubectl get pods -n spring-sse-example
 
 # View logs
-kubectl logs -f deployment/spring-sse-app -n spring-sse-<env>
+kubectl logs -f deployment/spring-sse-example -n spring-sse-example
 
-# Port forward for testing
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env>
-kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env>
+# Port forward for testing (actuator shares the application port)
+kubectl port-forward -n spring-sse-example svc/spring-sse-example 8080:80
 
-# Test Kustomize build
-kubectl kustomize k8s/overlays/<env>
+# Test the Kustomize build and the checks CI runs
+kubectl kustomize deploy
+./scripts/verify-manifests.sh
 ```
 
 ### CI/CD Issues
@@ -209,26 +205,8 @@ curl -X POST -H "Content-Type: application/json" \
 open http://localhost:8080/test.html
 ```
 
-## Multi-Environment Deployment
+## Other Environments
 
-### EKS Development Environment
-```bash
-# Build and push image
-DOCKER_USERNAME=<your-dockerhub-username> ./gradlew jib
-
-# Deploy to EKS dev
-export EKS_CLUSTER_NAME=my-dev-cluster
-ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
-```
-
-### EKS Production Environment
-```bash
-# Deploy to EKS production (uses clean semantic versioning)
-export EKS_CLUSTER_NAME=my-prod-cluster
-ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
-```
-
-**Environment Differences:**
-- **Local lab** (`deploy/`): 1 replica, plain manifests synced by Argo CD
-- **Dev**: 2 replicas, ALB ingress, multi-version support
-- **Prod**: 3 replicas, strict security, monitoring integration
+The local lab is the only environment. Earlier EKS overlays were removed because
+they had never been deployed; configuration for an AWS target will be added to
+`deploy/` when that target is chosen (see `TODO.md`).

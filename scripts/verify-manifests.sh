@@ -1,8 +1,10 @@
 #!/bin/bash
-# Renders every Kustomize overlay and fails on the defects behind issue #16:
-#   - images resolving to :latest (non-reproducible deploys, broken rollback)
+# Renders deploy/ (the manifests Argo CD syncs) and fails on:
+#   - a kustomization that does not build
+#   - images with no tag or pinned to :latest (non-reproducible deploys, issue #16)
 #   - image tags that do not match the project version in build.gradle
-#   - unsubstituted ${...} placeholders, which are invalid Kubernetes field values
+#   - actuator exposed more widely than intended, or routed through an Ingress (issue #13)
+#   - dashboard files that are not valid JSON or have no uid
 #
 # Runs entirely offline - `kubectl kustomize` needs no cluster.
 
@@ -16,10 +18,12 @@ NC='\033[0m'
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-if ! command -v kubectl >/dev/null 2>&1; then
-    echo -e "${RED}kubectl is required (it provides the embedded kustomize renderer)${NC}"
-    exit 1
-fi
+for tool in kubectl jq; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo -e "${RED}${tool} is required${NC}"
+        exit 1
+    fi
+done
 
 VERSION=$(grep "^version = " build.gradle | cut -d "'" -f 2)
 if [ -z "$VERSION" ]; then
@@ -30,76 +34,70 @@ echo -e "${YELLOW}Project version: ${VERSION}${NC}"
 
 FAILURES=0
 
-for overlay in k8s/overlays/*/; do
-    env_name=$(basename "$overlay")
-    rendered=$(kubectl kustomize "$overlay")
+if ! rendered=$(kubectl kustomize deploy); then
+    echo -e "${RED}deploy/ does not build with kustomize${NC}"
+    exit 1
+fi
 
-    # Unsubstituted placeholders reach the API server as invalid values.
-    if placeholders=$(echo "$rendered" | grep -n '\${' || true); [ -n "$placeholders" ]; then
-        echo -e "${RED}[$env_name] unsubstituted placeholder(s):${NC}"
-        echo "$placeholders" | sed 's/^/    /'
-        FAILURES=$((FAILURES + 1))
-    fi
-
-    images=$(echo "$rendered" | grep -E "^\s+image:" | awk '{print $2}' | sort -u)
-    if [ -z "$images" ]; then
-        echo -e "${RED}[$env_name] no image found in rendered output${NC}"
-        FAILURES=$((FAILURES + 1))
-        continue
-    fi
-
+# In a rendered list item the key may follow the dash ("- image: ...").
+images=$(echo "$rendered" | grep -E "^[[:space:]-]*image:[[:space:]]" | awk '{print $NF}' | sort -u)
+if [ -z "$images" ]; then
+    echo -e "${RED}no image found in rendered output${NC}"
+    FAILURES=$((FAILURES + 1))
+else
     while IFS= read -r image; do
         tag="${image##*:}"
         if [ "$tag" = "latest" ]; then
-            echo -e "${RED}[$env_name] image pinned to :latest -> ${image}${NC}"
+            echo -e "${RED}image pinned to :latest -> ${image}${NC}"
             FAILURES=$((FAILURES + 1))
         elif [ "$image" = "$tag" ]; then
-            echo -e "${RED}[$env_name] image has no tag -> ${image}${NC}"
+            echo -e "${RED}image has no tag -> ${image}${NC}"
             FAILURES=$((FAILURES + 1))
         elif [ "$tag" != "$VERSION" ]; then
-            echo -e "${RED}[$env_name] image tag ${tag} does not match project version ${VERSION} -> ${image}${NC}"
+            echo -e "${RED}image tag ${tag} does not match project version ${VERSION} -> ${image}${NC}"
             FAILURES=$((FAILURES + 1))
         else
-            echo -e "${GREEN}[$env_name] ${image}${NC}"
+            echo -e "${GREEN}image ${image}${NC}"
         fi
     done <<< "$images"
+fi
 
-    # Actuator must not be reachable through an Ingress (issue #13): it has no
-    # authentication. Scope to the Ingress document: Deployment probes legitimately use
-    # path: /actuator/health, and the ALB healthcheck-path annotation names it too.
-    # Anchoring on "path:" after leading whitespace excludes the annotation, which
-    # reads "...healthcheck-path: /actuator/health".
-    if echo "$rendered" | awk '
-        /^---$/ { in_ingress = 0 }
-        /^kind: Ingress$/ { in_ingress = 1 }
-        in_ingress && /^[[:space:]]*path:[[:space:]]*\/actuator/ { found = 1 }
-        END { exit !found }
-    '; then
-        echo -e "${RED}[$env_name] Ingress routes /actuator externally${NC}"
-        FAILURES=$((FAILURES + 1))
-    fi
+# Actuator has no authentication, so it must never be reachable through an Ingress
+# (issue #13). deploy/ has no Ingress today; this guards the day one is added.
+if echo "$rendered" | awk '
+    /^---$/ { in_ingress = 0 }
+    /^kind: Ingress$/ { in_ingress = 1 }
+    in_ingress && /^[[:space:]]*path:[[:space:]]*\/actuator/ { found = 1 }
+    END { exit !found }
+'; then
+    echo -e "${RED}Ingress routes /actuator externally${NC}"
+    FAILURES=$((FAILURES + 1))
+fi
 
-    # Keep the actuator surface minimal in every overlay (issue #13). health covers the
-    # liveness and readiness probes; metrics and info are not needed and disclose build
-    # and runtime detail. The Argo CD lab in deploy/ is separate and not checked here.
-    exposure=$(echo "$rendered" | grep -E "management\.endpoints\.web\.exposure\.include:" | head -1 | sed 's/.*: *//' | tr -d '"')
-    if echo "$exposure" | grep -qE "metrics|info|\*"; then
-        echo -e "${RED}[$env_name] actuator exposure too broad: ${exposure}${NC}"
-        FAILURES=$((FAILURES + 1))
-    fi
+# Keep the actuator surface small: health for the probes, prometheus for the scrape.
+# The value is the line after the env var name in the rendered Deployment.
+exposure=$(echo "$rendered" | awk '
+    found { sub(/^[[:space:]]*value:[[:space:]]*/, ""); gsub(/"/, ""); print; exit }
+    /name:[[:space:]]*MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE/ { found = 1 }
+')
+for endpoint in $(echo "$exposure" | tr ',' ' '); do
+    case "$endpoint" in
+        health|prometheus) ;;
+        *)
+            echo -e "${RED}actuator exposure too broad: ${exposure}${NC}"
+            FAILURES=$((FAILURES + 1))
+            break
+            ;;
+    esac
+done
 
-    # Version labels must track the release, not drift from it (issue #25).
-    labels=$(echo "$rendered" | grep -E "app\.kubernetes\.io/version:" | awk '{print $2}' | tr -d '"' | sort -u)
-    if [ -z "$labels" ]; then
-        echo -e "${RED}[$env_name] no app.kubernetes.io/version label found${NC}"
+for dashboard in deploy/dashboards/*.json; do
+    [ -e "$dashboard" ] || continue
+    if ! uid=$(jq -er '.uid | select(type == "string" and length > 0)' "$dashboard" 2>/dev/null); then
+        echo -e "${RED}${dashboard} is not valid JSON or has no top-level uid${NC}"
         FAILURES=$((FAILURES + 1))
     else
-        while IFS= read -r label; do
-            if [ "$label" != "$VERSION" ]; then
-                echo -e "${RED}[$env_name] version label ${label} does not match project version ${VERSION}${NC}"
-                FAILURES=$((FAILURES + 1))
-            fi
-        done <<< "$labels"
+        echo -e "${GREEN}dashboard ${dashboard} (uid ${uid})${NC}"
     fi
 done
 
@@ -108,4 +106,4 @@ if [ "$FAILURES" -gt 0 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}All overlays pin a buildable, version-matched image tag.${NC}"
+echo -e "${GREEN}deploy/ builds, pins a version-matched image tag, and its dashboards parse.${NC}"

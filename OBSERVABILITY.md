@@ -17,8 +17,6 @@ Argo CD syncs `deploy/` from `main`. Grafana's dashboard sidecar watches every
 namespace for ConfigMaps with the `grafana_dashboard` label and loads them, so a
 merged change to the JSON reaches Grafana with no manual step.
 
-The `k8s/` overlays expose `health` only (issue #13) and are not scraped.
-
 Requirements on the cluster: the Prometheus Operator CRDs and a Grafana with the
 dashboard sidecar enabled. The `kube-prometheus-stack` Helm chart provides both.
 

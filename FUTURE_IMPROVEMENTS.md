@@ -128,7 +128,7 @@ This document contains recommendations and questions to address for improving th
 ## Notes
 
 - Each task should be implemented and tested in the local Argo CD lab first
-- Document all changes in KUBERNETES_DEPLOYMENT.md
+- Document all changes in BUILD_AND_DEPLOY.md
 - Update AGENTS.md with new commands and workflows
 - Consider creating runbooks for common operations
 

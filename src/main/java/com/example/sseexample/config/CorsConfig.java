@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Profile-agnostic CORS policy driven by the {@code app.cors.allowed-origins}
- * property (comma-separated). Dev defaults to "*"; production overlays set
+ * property (comma-separated). Dev defaults to "*"; production sets
  * explicit origins. Replaces the hardcoded {@code @CrossOrigin(origins = "*")}.
  */
 @Configuration

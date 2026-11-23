@@ -20,7 +20,7 @@ spec:
               containerPort: 8080
           env:
             # Local lab only: this Service is not exposed outside the cluster.
-            # The k8s/ overlays deliberately expose health alone (issue #13).
+            # Anything exposed beyond the cluster should stay health-only (issue #13).
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: health,prometheus
           # No management.server.port here, so actuator shares port 8080.

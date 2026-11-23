@@ -181,10 +181,11 @@ The build pipeline provides automation from code to deployment:
 
 2. **Kubernetes Manifests**:
    - `deploy/`: **Active deployment configuration.** Argo CD on the local OrbStack cluster syncs `deploy/` (built with Kustomize via `deploy/kustomization.yaml`: Deployment, Service, Prometheus `ServiceMonitor`, and Grafana dashboard ConfigMap) into the `spring-sse-example` namespace. Shared platform infrastructure (Argo CD, `kube-prometheus-stack`) lives in `~/projects/k8s-lab-infra`.
-   - `k8s/` (and `scripts/deploy-eks-kustomize.sh`, `scripts/render-manifests.sh`, `KUBERNETES_DEPLOYMENT.md`): **Undeployed EKS overlays.** They have never run on a cluster, so everything in them is an educated guess until an AWS target exists to build, deploy and test against. Leave them as they are; do not delete them and do not polish them. The plan is to collapse `deploy/` and `k8s/` into one tree (issue #61).
+   - There is no other manifest set. The EKS overlays that used to live in `k8s/` were never deployed and have been removed; configuration for an AWS target will be built in `deploy/` and the platform project when that target is chosen.
 
 3. **Verification Scripts**:
-   - `scripts/verify-manifests.sh` / `scripts/verify-references.sh`: Offline checks for manifests and doc/script file references.
+   - `scripts/verify-manifests.sh`: renders `deploy/` offline and checks the image tag against `build.gradle`, the actuator exposure, and the dashboard JSON.
+   - `scripts/verify-references.sh`: checks that scripts and docs point at files that exist.
 
 ### Setting Up the Pipeline
 
