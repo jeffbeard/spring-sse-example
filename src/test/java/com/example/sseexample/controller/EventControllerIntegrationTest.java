@@ -99,22 +99,97 @@ class EventControllerIntegrationTest {
         org.junit.jupiter.api.Assertions.assertNotNull(eventService.getLastEmitter());
     }
 
-    @Test
-    void triggerEvent_ShouldBroadcastEvent() throws Exception {
-        // Given
-        String testMessage = "Test message";
-
-        // When
-        mockMvc.perform(post("/api/trigger-event")
+    private org.springframework.test.web.servlet.ResultActions postTrigger(String body) throws Exception {
+        return mockMvc.perform(post("/api/trigger-event")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("\"" + testMessage + "\""))
+                .content(body));
+    }
+
+    private void assertNothingBroadcast() {
+        org.junit.jupiter.api.Assertions.assertNull(eventService.getLastEventName());
+        org.junit.jupiter.api.Assertions.assertNull(eventService.getLastEventData());
+    }
+
+    // The documented body is a JSON string. It used to be passed on with its quotes
+    // still on and was then JSON-encoded a second time (issue #65).
+    @Test
+    void triggerEvent_WithJsonString_ShouldBroadcastDecodedMessage() throws Exception {
+        postTrigger("\"Test message\"")
                 .andExpect(status().isOk())
                 .andExpect(content().string("Event triggered"));
 
-        // Then
         org.junit.jupiter.api.Assertions.assertEquals("custom", eventService.getLastEventName());
-        // The message is wrapped in quotes because it's a JSON string
-        org.junit.jupiter.api.Assertions.assertEquals("\"" + testMessage + "\"", eventService.getLastEventData());
+        org.junit.jupiter.api.Assertions.assertEquals("Test message", eventService.getLastEventData());
+    }
+
+    @Test
+    void triggerEvent_WithEscapedCharacters_ShouldBroadcastThemUnescaped() throws Exception {
+        postTrigger("\"say \\\"hi\\\"\\nbye\"")
+                .andExpect(status().isOk());
+
+        org.junit.jupiter.api.Assertions.assertEquals("say \"hi\"\nbye", eventService.getLastEventData());
+    }
+
+    @Test
+    void triggerEvent_WithMalformedJson_ShouldReturn400() throws Exception {
+        postTrigger("invalid json")
+                .andExpect(status().isBadRequest());
+
+        assertNothingBroadcast();
+    }
+
+    @Test
+    void triggerEvent_WithJsonObject_ShouldReturn400() throws Exception {
+        postTrigger("{\"message\":\"hello\"}")
+                .andExpect(status().isBadRequest());
+
+        assertNothingBroadcast();
+    }
+
+    @Test
+    void triggerEvent_WithJsonNumber_ShouldReturn400() throws Exception {
+        postTrigger("42")
+                .andExpect(status().isBadRequest());
+
+        assertNothingBroadcast();
+    }
+
+    @Test
+    void triggerEvent_WithBlankMessage_ShouldReturn400() throws Exception {
+        postTrigger("\"   \"")
+                .andExpect(status().isBadRequest());
+
+        assertNothingBroadcast();
+    }
+
+    @Test
+    void triggerEvent_AtMaximumLength_ShouldBroadcast() throws Exception {
+        String message = "x".repeat(EventController.MAX_MESSAGE_LENGTH);
+
+        postTrigger("\"" + message + "\"")
+                .andExpect(status().isOk());
+
+        org.junit.jupiter.api.Assertions.assertEquals(message, eventService.getLastEventData());
+    }
+
+    @Test
+    void triggerEvent_OverMaximumLength_ShouldReturn400() throws Exception {
+        String message = "x".repeat(EventController.MAX_MESSAGE_LENGTH + 1);
+
+        postTrigger("\"" + message + "\"")
+                .andExpect(status().isBadRequest());
+
+        assertNothingBroadcast();
+    }
+
+    @Test
+    void triggerEvent_WithPlainTextContentType_ShouldReturn415() throws Exception {
+        mockMvc.perform(post("/api/trigger-event")
+                .contentType(MediaType.TEXT_PLAIN)
+                .content("hello"))
+                .andExpect(status().isUnsupportedMediaType());
+
+        assertNothingBroadcast();
     }
 
     @Test
@@ -123,22 +198,5 @@ class EventControllerIntegrationTest {
         mockMvc.perform(get("/api/"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("SSE Example Server is running")));
-    }
-
-    @Test
-    void triggerEvent_WithInvalidJson_ShouldStillAcceptIt() throws Exception {
-        // Given
-        String invalidJson = "invalid json";
-
-        // When
-        mockMvc.perform(post("/api/trigger-event")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(invalidJson))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Event triggered"));
-
-        // Then - Verify that the broadcast happened with the raw invalid JSON
-        org.junit.jupiter.api.Assertions.assertEquals("custom", eventService.getLastEventName());
-        org.junit.jupiter.api.Assertions.assertEquals(invalidJson, eventService.getLastEventData());
     }
 }

@@ -3,6 +3,7 @@ package com.example.sseexample.controller;
 import com.example.sseexample.service.EventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -55,7 +56,7 @@ class EventControllerSimpleTest {
         EventController controller = new EventController(service);
         
         // When
-        var response = controller.triggerEvent("test message");
+        var response = controller.triggerEvent(new ObjectMapper().readTree("\"test message\""));
         
         // Then
         assertNotNull(response);

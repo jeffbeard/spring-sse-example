@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: spring-sse-example
-          image: spring-sse-example:1.2.0
+          image: spring-sse-example:1.2.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

@@ -23,7 +23,7 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 - `EventController` exposes `/api/events` SSE endpoint using `SseEmitter`
 - `EventService` manages SSE connections with thread-safe `CopyOnWriteArrayList` and a bounded broadcast executor
 - Periodic background tasks generate heartbeat and notification events
-- Custom events can be triggered via POST `/api/trigger-event`
+- Custom events can be triggered via POST `/api/trigger-event`; the body is a JSON string, rejected with `400` if blank or longer than 1000 characters
 - `RootRedirectConfig` redirects `/` to `/test.html`
 - `CorsConfig` configures CORS for `/api/**` via `app.cors.allowed-origins`
 
@@ -59,7 +59,7 @@ DOCKER_USERNAME=jeffbeard ./gradlew jib   # Build Docker image and push to Docke
 ./gradlew verifyNoDevtoolsInImage
 
 # Run with Docker (uses jeffbeard Docker Hub repository)
-docker run -p 8080:8080 jeffbeard/spring-sse-example:1.2.0
+docker run -p 8080:8080 jeffbeard/spring-sse-example:1.2.1
 ```
 
 **Testing SSE Endpoints:**

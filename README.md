@@ -41,7 +41,9 @@ POST /api/trigger-event
 Content-Type: application/json
 Body: "Your custom message"
 ```
-Broadcasts a custom event to all connected SSE clients.
+Broadcasts a custom event to all connected SSE clients. The body must be a JSON
+string (quoted, as above), not blank, and at most 1000 characters; anything else
+returns `400`. Other content types return `415`.
 
 ### Health Check
 ```
