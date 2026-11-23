@@ -1,10 +1,10 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## 🔒 SECURITY RESTRICTIONS
 
-**CRITICAL: Claude Code is STRICTLY PROHIBITED from:**
+**CRITICAL: AI agents are STRICTLY PROHIBITED from:**
 - Accessing, reading, viewing, or inspecting ANY repository secrets
 - Using commands like `gh secret list`, `gh secret view`, or similar secret-related operations
 - Attempting to read environment variables containing credentials or sensitive information
@@ -21,14 +21,17 @@ This is a Spring Boot application demonstrating Server-Sent Events (SSE) impleme
 
 **SSE Event Flow:**
 - `EventController` exposes `/api/events` SSE endpoint using `SseEmitter`
-- `EventService` manages SSE connections with thread-safe `CopyOnWriteArrayList`
+- `EventService` manages SSE connections with thread-safe `CopyOnWriteArrayList` and a bounded broadcast executor
 - Periodic background tasks generate heartbeat and notification events
 - Custom events can be triggered via POST `/api/trigger-event`
+- `RootRedirectConfig` redirects `/` to `/test.html`
+- `CorsConfig` configures CORS for `/api/**` via `app.cors.allowed-origins`
 
-**Connection Management:**
-- Each SSE connection gets an `SseEmitter` with infinite timeout (0L)
-- Automatic cleanup on connection completion, timeout, or error
-- Concurrent connection support with thread-safe operations
+**Connection Management (`SseProperties` / `app.sse.*`):**
+- Global connection cap (`app.sse.max-connections`, default `1000`); when full, `/api/events` returns `503 Service Unavailable` with `Retry-After: 5`
+- Finite emitter timeout (`app.sse.timeout-ms`, default `300000` / 5 minutes; matched by `spring.mvc.async.request-timeout=300000`)
+- Per-emitter send timeout (`app.sse.send-timeout-ms`, default `5000` ms) on a bounded pool (`app.sse.broadcast-threads`, default `4`) so slow consumers are dropped without stalling other clients
+- Automatic cleanup on connection completion, timeout, error, or `@PreDestroy` shutdown
 
 ## Common Development Commands
 
@@ -76,9 +79,9 @@ open http://localhost:8080/test.html
 ## Development Notes
 
 - Application runs on port 8080 by default
-- DevTools enabled for hot reload during development
-- CORS configured for all origins (development only)
-- Static HTML test client available at `/test.html`
+- DevTools enabled for hot reload during development (excluded from container images and disabled in `production` profile)
+- CORS configured via `app.cors.allowed-origins` (`*` in development; override with explicit origins in production)
+- Static HTML test client available at `/test.html` (and `/` redirects to `/test.html`)
 - SSE events include: `connected`, `heartbeat` (30s intervals), `notification` (15s intervals), `custom`
 
 ## Observability
@@ -110,6 +113,7 @@ Consequence: pins do not refresh themselves. Bump them deliberately, e.g. when a
 ## Branch and Commit Conventions
 
 **IMPORTANT**: Always follow these conventions when creating branches and commits.
+- **NEVER make changes directly on `main`.** Always create and switch to a branch (`feature/<short-name>` or `bugfix/<short-name>`) before editing, adding, or deleting any files.
 
 **Branch Naming:**
 - `feature/<short-name>` - New features or enhancements
@@ -136,77 +140,57 @@ Consequence: pins do not refresh themselves. Bump them deliberately, e.g. when a
 ```
 feature: add SSE authentication middleware
 bugfix: fix memory leak in connection cleanup
-chore: update Spring Boot to 3.3.6
+chore: update Spring Boot to 4.2.0
 docs: update API documentation
 ```
 
 ## Testing Strategy
 
-**Current Test Suite (100% passing):**
-- `SimpleTest`: Basic functionality smoke tests
-- `EventControllerSimpleTest`: Direct controller testing without mocking
-- `EventServiceTest`: SSE connection management with disabled periodic events
+**Current Test Suite:**
+- `EventControllerSimpleTest`: Direct controller unit testing without mocking
+- `EventControllerIntegrationTest`: Standalone `MockMvc` controller tests including 503 capacity handling
+- `EventServiceTest`: Core SSE connection management and JSON payload formatting tests
+- `EventServiceLimitsTest`: Connection cap and finite emitter timeout tests
+- `EventServiceBroadcastTest`: Slow-consumer eviction and non-starvation broadcast tests
+- `EventServiceLifecycleTest`: `@PreDestroy` executor shutdown and emitter cleanup tests
+- `EventServiceMetricsTest`: Micrometer `sse.*` gauge and counter tests
+- `CorsConfigTest`: `MockMvc` CORS preflight allow/reject tests
+- `DevToolsProductionProfileTest`: Verifies DevTools is disabled under the `production` profile
+- `RootRedirectTest`: Verifies `/` redirects (`302`) to `/test.html`
+- `SseIntegrationTest`: Full `@SpringBootTest(webEnvironment = RANDOM_PORT)` end-to-end SSE streaming tests
 
 **Test Coverage:** JaCoCo reports generated with 50% minimum threshold.
 
-## Future Test Improvements (TODO)
-
-**When Mockito/Spring compatibility improves, consider adding:**
-
-1. **Enhanced Integration Tests:**
-   ```java
-   @SpringBootTest(webEnvironment = RANDOM_PORT)
-   @TestPropertySource(properties = "spring.profiles.active=test")
-   // Full application context tests with TestRestTemplate
-   ```
-
-2. **MockMvc API Tests:**
-   ```java
-   @WebMvcTest(EventController.class)
-   // Focused controller layer testing with MockMvc
-   ```
-
-3. **SSE Streaming Tests:**
-   ```java
-   // Real HTTP client tests for SSE endpoint streaming
-   // Test connection lifecycle, event parsing, reconnection
-   ```
-
-4. **Concurrent Connection Tests:**
-   ```java
-   // Test multiple simultaneous SSE connections
-   // Verify thread-safety under load
-   ```
-
 ## Key Implementation Details
 
-- Uses `@CrossOrigin(origins = "*")` for development - restrict in production
-- SSE connection lifecycle managed with completion/timeout/error callbacks  
-- Background `ScheduledExecutorService` generates periodic events
-- Event data formatted as JSON with message and timestamp fields
+- Uses `CorsConfig` (`app.cors.allowed-origins`) instead of `@CrossOrigin` — restrict origins in production
+- SSE connection lifecycle managed with completion/timeout/error callbacks and `@PreDestroy` shutdown
+- Background `ScheduledExecutorService` generates periodic events; bounded `ExecutorService` fans out broadcasts with per-send timeouts
+- Broadcast event payloads formatted as JSON with `message` and `timestamp` fields via Jackson `ObjectMapper`
 
 ## Complete Build Pipeline
 
 ### Pipeline Overview
-The build pipeline provides complete automation from code to deployment:
+The build pipeline provides automation from code to deployment:
 
 1. **CI/CD Pipeline** (`.github/workflows/ci.yml`):
-   - **Test Job**: Runs tests, generates coverage reports
-   - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on main and feature branches)
-   
-2. **Local Scripts**:
-   - `scripts/deploy-eks-kustomize.sh`: Deploy to an EKS environment (`ENVIRONMENT=dev|prod`)
-   - `scripts/render-manifests.sh`: Render an overlay, optionally overriding the image tag
-   - `scripts/verify-manifests.sh` / `scripts/verify-references.sh`: Offline checks, both run in CI
+   - **Test Job**: Runs tests, generates coverage reports, uploads artifacts
+   - **Manifests Job**: Runs `scripts/verify-manifests.sh`
+   - **Image Job**: Builds local Jib tarball, runs `verifyNoDevtoolsInImage`, and scans with Trivy
+   - **Docker Job**: Builds and pushes Docker images to Docker Hub (triggered on `main` and `feature/docker*` branches)
 
-3. **Kubernetes Manifests** (`k8s/`):
-   - Production-ready manifests with health checks, resource limits, security contexts
+2. **Kubernetes Manifests**:
+   - `deploy/`: **Active deployment configuration.** Argo CD on the local OrbStack cluster syncs `deploy/` (built with Kustomize via `deploy/kustomization.yaml`: Deployment, Service, Prometheus `ServiceMonitor`, and Grafana dashboard ConfigMap) into the `spring-sse-example` namespace. Shared platform infrastructure (Argo CD, `kube-prometheus-stack`) lives in `~/projects/k8s-lab-infra`.
+   - `k8s/` (and `scripts/deploy-eks-kustomize.sh`, `scripts/render-manifests.sh`, `KUBERNETES_DEPLOYMENT.md`): **Undeployed EKS overlays.** They have never run on a cluster, so everything in them is an educated guess until an AWS target exists to build, deploy and test against. Leave them as they are; do not delete them and do not polish them. The plan is to collapse `deploy/` and `k8s/` into one tree (issue #61).
+
+3. **Verification Scripts**:
+   - `scripts/verify-manifests.sh` / `scripts/verify-references.sh`: Offline checks for manifests and doc/script file references.
 
 ### Setting Up the Pipeline
 
 **IMPORTANT SECURITY NOTE:**
-- Claude Code is NEVER allowed to access, read, modify, or inspect repository secrets
-- Claude Code must NEVER attempt to view GitHub secrets, environment variables containing credentials, or any sensitive configuration
+- AI agents are NEVER allowed to access, read, modify, or inspect repository secrets
+- AI agents must NEVER attempt to view GitHub secrets, environment variables containing credentials, or any sensitive configuration
 - All secret management must be handled manually by authorized users only
 
 **1. Configure Docker Hub Secrets (Manual - User Only):**
@@ -225,37 +209,12 @@ export DOCKER_TOKEN=<your-personal-access-token>
 
 **Automated CI/CD (GitHub Actions):**
 - Push to `main` or `feature/docker*` branches triggers Docker build and push
-- Uses environment-aware image tagging: semantic version for prod, timestamped for dev
+- Uses environment-aware image tagging: semantic version for prod, timestamped/SHA for dev
 - Gracefully skips Docker push if credentials not configured
 
-**Manual Local Build and Deploy:**
-```bash
-# Build and push to Docker Hub (PREFERRED METHOD - uses Gradle Jib)
-./gradlew clean
-./gradlew build
-DOCKER_USERNAME=jeffbeard ./gradlew jib
+## Container and Kubernetes Deployment (Argo CD Lab)
 
-# Deploy to EKS dev environment
-ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
-
-# Deploy to EKS prod environment
-ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
-```
-
-## Container and Kubernetes Deployment
-
-**Environment Variables for Docker/Kubernetes:**
-```bash
-DOCKER_REGISTRY=docker.io           # Docker registry (default: docker.io)
-DOCKER_USERNAME=<your-username>     # Docker Hub username (auto-detected if logged in)
-DOCKER_TOKEN=<your-access-token>    # Docker Hub Personal Access Token (optional if logged in)
-ENVIRONMENT=dev|prod                # Target environment for EKS deployments
-EKS_CLUSTER_NAME=<cluster-name>     # EKS cluster name for deployments
-```
-
-**Local Lab (Argo CD):**
-
-Local deployment is the Argo CD lab, not a script. Argo CD on the local OrbStack cluster syncs `deploy/` from `main` into the `spring-sse-example` namespace. The cluster shares the host Docker engine, so a local image build is enough:
+Local deployment is the Argo CD lab on OrbStack (`deploy/`), not a deploy script. Argo CD syncs `deploy/` from `main` into the `spring-sse-example` namespace. The OrbStack cluster shares the host Docker engine, so a local image build is enough:
 
 ```bash
 # Build the image the lab manifest references (spring-sse-example:<version>)
@@ -263,58 +222,11 @@ Local deployment is the Argo CD lab, not a script. Argo CD on the local OrbStack
 
 # Same tag rebuilt? Argo CD sees no git change, so restart the pod by hand
 kubectl rollout restart deployment/spring-sse-example -n spring-sse-example
-```
 
-The Minikube overlay and its deploy script were removed. `k8s/` now holds only the EKS `dev` and `prod` overlays, which have never been deployed.
+# Render the Argo CD kustomization locally
+kubectl kustomize deploy
 
-**EKS Deployment:**
-```bash
-# Configure AWS CLI and create EKS cluster
-aws eks create-cluster --name my-cluster --version 1.28 --role-arn <cluster-role-arn>
-
-# Build and push image (uses Gradle Jib with existing Docker login)
-./gradlew clean && ./gradlew build && DOCKER_USERNAME=jeffbeard ./gradlew jib
-
-# Deploy to EKS dev environment
-export EKS_CLUSTER_NAME=my-cluster
-ENVIRONMENT=dev ./scripts/deploy-eks-kustomize.sh
-
-# Deploy to EKS prod environment (manual approval recommended)
-ENVIRONMENT=prod ./scripts/deploy-eks-kustomize.sh
-```
-
-**Kubernetes Resources (Kustomize-based):**
-- **Namespaces**: Environment-specific (`spring-sse-dev`, `spring-sse-prod`)
-- **Base Manifests**: `k8s/base/` (deployment, service, configmap)
-- **Environment Overlays**: `k8s/overlays/{dev,prod}/` with specific patches
-- **Deployment**: 2 replicas (dev), 3 replicas (prod)
-- **Service**: ClusterIP with Ingress for external access
-- **ConfigMap**: Environment-specific configuration patches
-- **Resource Limits**: Optimized per environment (512Mi/500m for dev, 1Gi/1000m for prod)
-- **Health Checks**: Liveness and readiness probes on management port 8081
-- **Security**: Non-root user (1001), read-only filesystem, dropped capabilities
-
-**Monitoring and Troubleshooting:**
-```bash
-# Check pod status (replace <env> with dev/prod)
-kubectl get pods -n spring-sse-<env>
-
-# View logs
-kubectl logs -f deployment/spring-sse-app -n spring-sse-<env>
-
-# Port forward for local access
-kubectl port-forward service/spring-sse-service 8080:80 -n spring-sse-<env>
-kubectl port-forward service/spring-sse-service 8081:8081 -n spring-sse-<env>
-
-# Check health endpoint
-curl http://localhost:8081/actuator/health
-
-# Deploy using Kustomize directly
-kubectl kustomize k8s/overlays/<env> | kubectl apply -f -
-
-# Render with an ad-hoc image tag override (repo files are never modified)
-./scripts/render-manifests.sh <env> <image-tag> [image-name]
-
-# Verify every overlay pins a version-matched, buildable image tag (no cluster needed)
-./scripts/verify-manifests.sh
+# Check pod status and logs in the lab namespace
+kubectl get pods -n spring-sse-example
+kubectl logs -f deployment/spring-sse-example -n spring-sse-example
 ```
