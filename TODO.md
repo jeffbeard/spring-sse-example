@@ -32,8 +32,7 @@ chosen, and tested as it is built.
       nothing in git, so Argo CD does not redeploy; it needs a manual
       `kubectl rollout restart`. Work out a better image flow (registry, unique
       tags, image updater).
-- [ ] Remove stale local images: `com.example/spring-sse-example:1.0.1` and
-      `spring-sse-example:1.0.1` (issue #72)
+- [x] Remove stale local images (issue #72, 2026-11-22)
 - [ ] Delete the hand-built Grafana dashboard once the provisioned
       "Spring SSE Example" one shows up, or export it over
       `deploy/dashboards/spring-sse-example.json` if its layout is better

@@ -44,4 +44,3 @@ on; this file is only an index of what the review produced and what it got wrong
   about them (#14, #19, #23, #24) are closed.
 - Configuration for an AWS target will be built and tested in `deploy/` and the
   platform project once that target is chosen.
-- Leftovers of the removed Minikube setup are tracked in #72.
