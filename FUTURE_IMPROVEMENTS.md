@@ -5,7 +5,7 @@ This document contains recommendations and questions to address for improving th
 ## High Priority Tasks
 
 ### 1. ArgoCD Integration for GitOps
-- [x] Install ArgoCD on a local cluster for testing (done on OrbStack; Minikube setup removed)
+- [x] Install ArgoCD on a local cluster for testing (done on OrbStack)
 - [ ] Set up ArgoCD in EKS clusters (dev and prod)
 - [ ] Create ArgoCD Application manifests for each environment
 - [ ] Configure automatic sync for dev, manual for prod
